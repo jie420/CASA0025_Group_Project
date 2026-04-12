@@ -1,13 +1,13 @@
 // ================================================
 // 01c_preprocessing_change_detection_and_grid.js
 // Author: Jie Liu
-// Purpose: Detect land cover changes between 2017-2018
-//          and 2022-2023, identify degradation and
+// Purpose: Detect land cover changes between 2016-2018
+//          and 2021-2023, identify degradation and
 //          recovery pixels, then aggregate to 10km grid
 //          for handoff to Analysis team.
 // Outputs: 
 //   - Degradation/recovery maps (visual)
-//   - 10km grid CSV + GeoJSON (exported to Drive)
+//   - 10km grid CSV + GeoJSON
 // ================================================
 
 
@@ -16,15 +16,15 @@
 // ------------------------------------------------
 var aoi = ee.Geometry.Rectangle([95, 45, 115, 48]);
 
-var dw2018 = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-  .filterDate('2017-06-01', '2018-09-30')
+var dwEarly = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2016-06-01', '2018-09-30')
   .filterBounds(aoi)
   .select('label')
   .mode()
   .clip(aoi);
 
-var dw2023 = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-  .filterDate('2022-06-01', '2023-09-30')
+var dwRecent = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2021-06-01', '2023-09-30')
   .filterBounds(aoi)
   .select('label')
   .mode()
@@ -36,7 +36,7 @@ var dw2023 = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
 // Pixels where land cover class differs between
 // the two periods are flagged as changed (value=1)
 // ------------------------------------------------
-var changed = dw2018.neq(dw2023);
+var changed = dwEarly.neq(dwRecent);
 
 Map.centerObject(aoi, 6);
 Map.addLayer(changed, 
@@ -51,7 +51,7 @@ Map.addLayer(changed,
 //      trees(1) → bare(7) = 17
 // Only changed pixels are included (updateMask)
 // ------------------------------------------------
-var transition = dw2018.multiply(10).add(dw2023)
+var transition = dwEarly.multiply(10).add(dwRecent)
   .updateMask(changed);
 
 
@@ -129,11 +129,11 @@ print('Total grid cells:', grid.size());
 // ------------------------------------------------
 // Stack all layers into one multi-band image
 // Allows a single reduceRegions() call for efficiency
-// Bands: lulc_2018, lulc_2023, degradation, recovery,
-//        changed
+// Bands: lulc_early (2016-2018), lulc_recent (2021-2023),
+//        degradation, recovery, changed
 // ------------------------------------------------
-var stackedImage = dw2018.rename('lulc_2018')
-  .addBands(dw2023.rename('lulc_2023'))
+var stackedImage = dwEarly.rename('lulc_early')
+  .addBands(dwRecent.rename('lulc_recent'))
   .addBands(degradation)
   .addBands(recovery)
   .addBands(changed.rename('changed'));
@@ -167,7 +167,7 @@ gridStats = gridStats.map(function(cell) {
   );
 });
 
-print('Sample grid cell properties:', gridStats.first());
+// print('Sample grid cell properties:', gridStats.first());
 
 
 // ------------------------------------------------
@@ -182,10 +182,10 @@ var recoveryCells = gridStats.filter(
 
 // Map.addLayer(gridStats.style({color: 'grey', fillColor: '00000000', width: 1}),
 //             {}, 'Grid cells (outline)');
-Map.addLayer(degradationCells.style({color: 'red',   fillColor: 'ff000044'}),
-             {}, 'Net degradation cells');
-Map.addLayer(recoveryCells.style({color: 'green', fillColor: '00ff0044'}),
-             {}, 'Net recovery cells');
+// Map.addLayer(degradationCells.style({color: 'red',   fillColor: 'ff000044'}),
+//             {}, 'Net degradation cells');
+// Map.addLayer(recoveryCells.style({color: 'green', fillColor: '00ff0044'}),
+//             {}, 'Net recovery cells');
 
 
 // ------------------------------------------------
@@ -197,8 +197,8 @@ Map.addLayer(recoveryCells.style({color: 'green', fillColor: '00ff0044'}),
 //   degradation_mean : proportion of degraded pixels
 //   recovery_mean    : proportion of recovered pixels
 //   net_change       : recovery_mean - degradation_mean
-//   lulc_2018_mode   : dominant class in 2017-2018
-//   lulc_2023_mode   : dominant class in 2022-2023
+//   lulc_early_mode  : dominant class in 2016-2018
+//   lulc_recent_mode : dominant class in 2021-2023
 //   changed_mean     : proportion of changed pixels
 // ------------------------------------------------
 Export.table.toDrive({

@@ -5,7 +5,7 @@
 //          data for Mongolia's forest-grassland-desert
 //          transition zone (identified visually from 
 //          full-country LULC distribution)
-// Outputs: dw2018, dw2023 (annual LULC composites)
+// Outputs: dwEarly, dwRecent
 // ================================================
 
 
@@ -32,17 +32,17 @@ var mongolia = ee.FeatureCollection("FAO/GAUL/2015/level0")
 // (Jun–Sep) is used to reduce snow/cloud contamination.
 // ------------------------------------------------
 
-// Early period: 2017–2018
-var dw2018 = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-  .filterDate('2017-06-01', '2018-09-30')
+// Early period: 2016–2018
+var dwEarly = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2016-06-01', '2018-09-30')
   .filterBounds(aoi)
   .select('label')
   .mode()
   .clip(aoi);
 
-// Recent period: 2022–2023
-var dw2023 = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-  .filterDate('2022-06-01', '2023-09-30')
+// Recent period: 2021–2023
+var dwRecent = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2021-06-01', '2023-09-30')
   .filterBounds(aoi)
   .select('label')
   .mode()
@@ -63,8 +63,8 @@ var dwVis = {
 };
 
 Map.centerObject(aoi, 6);
-Map.addLayer(dw2018, dwVis, 'LULC 2017-2018');
-Map.addLayer(dw2023, dwVis, 'LULC 2022-2023');
+Map.addLayer(dwEarly, dwVis, 'LULC 2016-2018');
+Map.addLayer(dwRecent, dwVis, 'LULC 2021-2023');
 Map.addLayer(aoi, {color: 'red'}, 'AOI boundary', false);
 
 
@@ -72,42 +72,42 @@ Map.addLayer(aoi, {color: 'red'}, 'AOI boundary', false);
 // Calculate pixel counts per class to verify data
 // coverage in AOI
 // ------------------------------------------------
-var classCount2018 = dw2018.reduceRegion({
+var classCountEarly = dwEarly.reduceRegion({
   reducer: ee.Reducer.frequencyHistogram(),
   geometry: aoi,
   scale: 1000,
   maxPixels: 1e9
 });
 
-var classCount2023 = dw2023.reduceRegion({
+var classCountRecent = dwRecent.reduceRegion({
   reducer: ee.Reducer.frequencyHistogram(),
   geometry: aoi,
   scale: 1000,
   maxPixels: 1e9
 });
 
-print('Class distribution 2017-2018:', classCount2018);
-print('Class distribution 2022-2023:', classCount2023);
+print('Class distribution 2016-2018:', classCountEarly);
+print('Class distribution 2021-2023:', classCountRecent);
 
 
 // ------------------------------------------------
 // Export composites
 // ------------------------------------------------
 Export.image.toDrive({
-  image: dw2018,
-  description: 'DynamicWorld_Mongolia_2018',
+  image: dwEarly,
+  description: 'DynamicWorld_Mongolia_Early_2016_2018',
   folder: 'CASA0025',
-  fileNamePrefix: 'dw_mongolia_2018',
+  fileNamePrefix: 'dw_mongolia_early_2016_2018',
   region: aoi,
   scale: 500,
   maxPixels: 1e9
 });
 
 Export.image.toDrive({
-  image: dw2023,
-  description: 'DynamicWorld_Mongolia_2023',
+  image: dwRecent,
+  description: 'DynamicWorld_Mongolia_Recent_2021_2023',
   folder: 'CASA0025',
-  fileNamePrefix: 'dw_mongolia_2023',
+  fileNamePrefix: 'dw_mongolia_recent_2021_2023',
   region: aoi,
   scale: 500,
   maxPixels: 1e9
