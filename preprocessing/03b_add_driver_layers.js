@@ -62,7 +62,12 @@ var ws   = tc.select('vs').mean().multiply(0.01).rename('ws');    // scale → m
 var dem    = ee.Image('USGS/SRTMGL1_003');
 var elev   = dem.rename('elev');
 var slope  = ee.Terrain.slope(dem).rename('slope');
-var aspect = ee.Terrain.aspect(dem).rename('aspect');
+
+// Decompose aspect into northness + eastness
+// to avoid the circular discontinuity at 0°/360°
+var aspectRad = ee.Terrain.aspect(dem).multiply(Math.PI).divide(180);
+var northness = aspectRad.cos().rename('northness');
+var eastness  = aspectRad.sin().rename('eastness');
 
 var clay = ee.Image('OpenLandMap/SOL/SOL_CLAY-WFRACTION_USDA-3A1A1A_M/v02')
   .select('b0').rename('clay');
@@ -74,11 +79,12 @@ var sand = ee.Image('OpenLandMap/SOL/SOL_SAND-WFRACTION_USDA-3A1A1A_M/v02')
 // 3. Build the Early-period predictor stack
 // Final band list (9 bands from Meng et al. 2021):
 //   Climate (4): prec, vpd, pet, ws
-//   Terrain (3): elev, slope, aspect
+//   Terrain (3): elev, slope, aspect [aspect decomposed into northness + eastness]
 //   Soil    (2): clay, sand
 // ------------------------------------------------
 var predictorStack = prec.addBands(vpd).addBands(pet).addBands(ws)
-  .addBands(elev).addBands(slope).addBands(aspect)
+  .addBands(elev).addBands(slope)
+  .addBands(northness).addBands(eastness)
   .addBands(clay).addBands(sand);
 
 
