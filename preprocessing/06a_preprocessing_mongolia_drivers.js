@@ -16,12 +16,12 @@
 //   Soil    (2): clay, sand  [substituting the
 //                categorical SOIL in Meng et al.]
 //
+// Input:
+//   projects/project-d66de26-4a7f-4da9-a72/assets/mongolia_grid_10km_cleaned_for_gee_v2
+// 
 // Output:
 //   projects/project-d66de26-4a7f-4da9-a72/assets/mongolia_grid_10km_predictors_early
 //
-// Depends on:
-//   02_clean_grid_asset.js  →  produces the grid asset with labels
-// ================================================
 
 
 // ------------------------------------------------
@@ -30,7 +30,7 @@
 var aoi = ee.Geometry.Rectangle([95, 45, 115, 48]);
 
 var gridAssetId =
-  'projects/project-d66de26-4a7f-4da9-a72/assets/mongolia_grid_10km_cleaned_asset_v2';
+  'projects/project-d66de26-4a7f-4da9-a72/assets/mongolia_grid_10km_cleaned_for_gee_v2';
 
 var outAssetId =
   'projects/project-d66de26-4a7f-4da9-a72/assets/mongolia_grid_10km_predictors_early';
@@ -103,6 +103,9 @@ print(gridWithPredictors.size());
 
 print('Early predictors - first feature');
 print(gridWithPredictors.first());
+
+print('is_deg_hotspot_5 counts (confirm teammate labels present)');
+print(gridWithPredictors.aggregate_histogram('is_deg_hotspot_5'));
 
 print('Early prec sample values');
 print(gridWithPredictors.aggregate_array('prec').slice(0, 10));
