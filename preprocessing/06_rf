@@ -1,0 +1,510 @@
+// ================================================
+// SINGLE-FILE RF WORKFLOW FOR GEE
+// Modes:
+//   1) LABEL_SELECTION
+//   2) TUNING
+//   3) FINAL
+//
+// Run order:
+//   - First:  MODE = 'LABEL_SELECTION'
+//   - Second: MODE = 'TUNING'
+//   - Third:  MODE = 'FINAL'
+// ================================================
+
+
+// ================================================
+// PART 0. MODE SWITCH
+// Change this manually before each run
+// ================================================
+var MODE = 'FINAL';   // 'LABEL_SELECTION' | 'TUNING' | 'FINAL'
+
+
+// ================================================
+// PART 1. GLOBAL SETTINGS
+// ================================================
+var grid = table;
+
+var inputBands = [
+  'prec', 'vpd', 'pet', 'ws',
+  'elev', 'slope', 'northness', 'eastness',
+  'clay', 'sand'
+];
+
+var labels = ['y10_netneg', 'y15_netneg', 'y20_netneg'];
+
+// fixed seeds for reproducibility
+var splitSeed = 42;
+var foldSeed  = 123;
+
+// manually update these after each stage
+var selectedLabel = 'y15_netneg';   // fill after LABEL_SELECTION
+var bestNtree = 100;                // fill after TUNING
+var bestMtry  = 6;                  // fill after TUNING
+var bestLeaf  = 1;                  // fill after TUNING
+
+
+// ================================================
+// PART 2. HELPERS
+// ================================================
+function metricsFromCM(cm) {
+  cm = ee.ConfusionMatrix(cm);
+
+  var oa = ee.Number(cm.accuracy());
+  var kappa = ee.Number(cm.kappa());
+
+  var producers = ee.Array(cm.producersAccuracy());
+  var consumers = ee.Array(cm.consumersAccuracy());
+
+  // keep your currently working indexing
+  var recall = ee.Number(producers.get([1, 0]));
+  var precision = ee.Number(consumers.get([0, 1]));
+
+  var f1 = ee.Algorithms.If(
+    precision.add(recall).gt(0),
+    ee.Number(2).multiply(precision).multiply(recall)
+      .divide(precision.add(recall)),
+    ee.Number(0)
+  );
+
+  return ee.Dictionary({
+    OA: oa,
+    Kappa: kappa,
+    Precision: precision,
+    Recall: recall,
+    F1: ee.Number(f1)
+  });
+}
+
+function meanStd(list) {
+  list = ee.List(list);
+  var mean = ee.Number(list.reduce(ee.Reducer.mean()));
+  var std = ee.Number(list.reduce(ee.Reducer.stdDev()));
+  return ee.Dictionary({mean: mean, std: std});
+}
+
+// build one fixed stratified 70/30 split for a given label
+function makeSplit(labelName) {
+  var pos = grid.filter(ee.Filter.eq(labelName, 1))
+                .randomColumn('rand_split', splitSeed);
+
+  var neg = grid.filter(ee.Filter.eq(labelName, 0))
+                .randomColumn('rand_split', splitSeed);
+
+  var trainPos = pos.filter(ee.Filter.lt('rand_split', 0.70));
+  var testPos  = pos.filter(ee.Filter.gte('rand_split', 0.70));
+  var trainNeg = neg.filter(ee.Filter.lt('rand_split', 0.70));
+  var testNeg  = neg.filter(ee.Filter.gte('rand_split', 0.70));
+
+  return {
+    trainPos: trainPos,
+    testPos: testPos,
+    trainNeg: trainNeg,
+    testNeg: testNeg,
+    trainSet: trainPos.merge(trainNeg),
+    testSet: testPos.merge(testNeg)
+  };
+}
+
+// create stratified folds inside training set
+function makeFolds(trainPos, trainNeg) {
+  var trainPosFolded = trainPos.randomColumn('fold_rand', foldSeed).map(function(f) {
+    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).int());
+  });
+
+  var trainNegFolded = trainNeg.randomColumn('fold_rand', foldSeed).map(function(f) {
+    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).int());
+  });
+
+  return {
+    trainPosFolded: trainPosFolded,
+    trainNegFolded: trainNegFolded
+  };
+}
+
+// ================================================
+// PART 3. MODE = LABEL_SELECTION
+// Compare y10 / y15 / y20 using baseline RF
+// Training-set only
+// ================================================
+function evaluateLabel(labelName) {
+
+  print('==============================');
+  print('Evaluating label:', labelName);
+  print('==============================');
+
+  var split = makeSplit(labelName);
+
+  print('Train size:', split.trainSet.size());
+  print('Test size (locked):', split.testSet.size());
+  print('Train positive count:', split.trainPos.size());
+  print('Test positive count:', split.testPos.size());
+
+  var folds = makeFolds(split.trainPos, split.trainNeg);
+
+  var oaList = [];
+  var kappaList = [];
+  var precisionList = [];
+  var recallList = [];
+  var f1List = [];
+
+  for (var i = 0; i < 5; i++) {
+    var valPos = folds.trainPosFolded.filter(ee.Filter.eq('fold_id', i));
+    var valNeg = folds.trainNegFolded.filter(ee.Filter.eq('fold_id', i));
+    var cvVal = valPos.merge(valNeg);
+
+    var trPos = folds.trainPosFolded.filter(ee.Filter.neq('fold_id', i));
+    var trNeg = folds.trainNegFolded.filter(ee.Filter.neq('fold_id', i));
+    var cvTrain = trPos.merge(trNeg);
+
+    var clf = ee.Classifier.smileRandomForest({
+      numberOfTrees: 100
+    }).train({
+      features: cvTrain,
+      classProperty: labelName,
+      inputProperties: inputBands
+    });
+
+    var pred = cvVal.classify(clf);
+    var cm = pred.errorMatrix(labelName, 'classification');
+    var m = metricsFromCM(cm);
+
+    print('Fold ' + i + ' metrics:', m);
+
+    oaList.push(m.get('OA'));
+    kappaList.push(m.get('Kappa'));
+    precisionList.push(m.get('Precision'));
+    recallList.push(m.get('Recall'));
+    f1List.push(m.get('F1'));
+  }
+
+  var oaStats = meanStd(oaList);
+  var kappaStats = meanStd(kappaList);
+  var precisionStats = meanStd(precisionList);
+  var recallStats = meanStd(recallList);
+  var f1Stats = meanStd(f1List);
+
+  return ee.Feature(null, {
+    label: labelName,
+    train_n: split.trainSet.size(),
+    test_n_locked: split.testSet.size(),
+    train_pos_n: split.trainPos.size(),
+    test_pos_n_locked: split.testPos.size(),
+
+    cv_oa_mean: oaStats.get('mean'),
+    cv_oa_std: oaStats.get('std'),
+
+    cv_kappa_mean: kappaStats.get('mean'),
+    cv_kappa_std: kappaStats.get('std'),
+
+    cv_precision_mean: precisionStats.get('mean'),
+    cv_precision_std: precisionStats.get('std'),
+
+    cv_recall_mean: recallStats.get('mean'),
+    cv_recall_std: recallStats.get('std'),
+
+    cv_f1_mean: f1Stats.get('mean'),
+    cv_f1_std: f1Stats.get('std')
+  });
+}
+
+if (MODE === 'LABEL_SELECTION') {
+  var summaryFC = ee.FeatureCollection(labels.map(evaluateLabel));
+
+  print('===== LABEL SELECTION SUMMARY =====');
+  print(summaryFC);
+
+  print('Labels:', summaryFC.aggregate_array('label'));
+  print('CV F1 mean:', summaryFC.aggregate_array('cv_f1_mean'));
+  print('CV F1 std:', summaryFC.aggregate_array('cv_f1_std'));
+  print('CV Kappa mean:', summaryFC.aggregate_array('cv_kappa_mean'));
+  print('Train positive counts:', summaryFC.aggregate_array('train_pos_n'));
+  
+}
+
+// ================================================
+// PART 3. MODE = LABEL_SELECTION
+// Compare y10 / y15 / y20 using baseline RF
+// Training-set only
+// ================================================
+function evaluateLabel(labelName) {
+
+  print('==============================');
+  print('Evaluating label:', labelName);
+  print('==============================');
+
+  var split = makeSplit(labelName);
+
+  print('Train size:', split.trainSet.size());
+  print('Test size (locked):', split.testSet.size());
+  print('Train positive count:', split.trainPos.size());
+  print('Test positive count:', split.testPos.size());
+
+  var folds = makeFolds(split.trainPos, split.trainNeg);
+
+  var oaList = [];
+  var kappaList = [];
+  var precisionList = [];
+  var recallList = [];
+  var f1List = [];
+
+  for (var i = 0; i < 5; i++) {
+    var valPos = folds.trainPosFolded.filter(ee.Filter.eq('fold_id', i));
+    var valNeg = folds.trainNegFolded.filter(ee.Filter.eq('fold_id', i));
+    var cvVal = valPos.merge(valNeg);
+
+    var trPos = folds.trainPosFolded.filter(ee.Filter.neq('fold_id', i));
+    var trNeg = folds.trainNegFolded.filter(ee.Filter.neq('fold_id', i));
+    var cvTrain = trPos.merge(trNeg);
+
+    var clf = ee.Classifier.smileRandomForest({
+      numberOfTrees: 100
+    }).train({
+      features: cvTrain,
+      classProperty: labelName,
+      inputProperties: inputBands
+    });
+
+    var pred = cvVal.classify(clf);
+    var cm = pred.errorMatrix(labelName, 'classification');
+    var m = metricsFromCM(cm);
+
+    print('Fold ' + i + ' metrics:', m);
+
+    oaList.push(m.get('OA'));
+    kappaList.push(m.get('Kappa'));
+    precisionList.push(m.get('Precision'));
+    recallList.push(m.get('Recall'));
+    f1List.push(m.get('F1'));
+  }
+
+  var oaStats = meanStd(oaList);
+  var kappaStats = meanStd(kappaList);
+  var precisionStats = meanStd(precisionList);
+  var recallStats = meanStd(recallList);
+  var f1Stats = meanStd(f1List);
+
+  return ee.Feature(null, {
+    label: labelName,
+    train_n: split.trainSet.size(),
+    test_n_locked: split.testSet.size(),
+    train_pos_n: split.trainPos.size(),
+    test_pos_n_locked: split.testPos.size(),
+
+    cv_oa_mean: oaStats.get('mean'),
+    cv_oa_std: oaStats.get('std'),
+
+    cv_kappa_mean: kappaStats.get('mean'),
+    cv_kappa_std: kappaStats.get('std'),
+
+    cv_precision_mean: precisionStats.get('mean'),
+    cv_precision_std: precisionStats.get('std'),
+
+    cv_recall_mean: recallStats.get('mean'),
+    cv_recall_std: recallStats.get('std'),
+
+    cv_f1_mean: f1Stats.get('mean'),
+    cv_f1_std: f1Stats.get('std')
+  });
+}
+
+if (MODE === 'LABEL_SELECTION') {
+  var summaryFC = ee.FeatureCollection(labels.map(evaluateLabel));
+
+  print('===== LABEL SELECTION SUMMARY =====');
+  print(summaryFC);
+
+  print('Labels:', summaryFC.aggregate_array('label'));
+  print('CV F1 mean:', summaryFC.aggregate_array('cv_f1_mean'));
+  print('CV F1 std:', summaryFC.aggregate_array('cv_f1_std'));
+  print('CV Kappa mean:', summaryFC.aggregate_array('cv_kappa_mean'));
+  print('Train positive counts:', summaryFC.aggregate_array('train_pos_n'));
+  
+}
+
+// ================================================
+// PART 4a. MODE = TUNING
+// Tune RF hyperparameters on training set only
+// ================================================
+if (MODE === 'TUNING') {
+
+  var split = makeSplit(selectedLabel);
+  var folds = makeFolds(split.trainPos, split.trainNeg);
+
+  print('===== TUNING LABEL =====');
+  print(selectedLabel);
+  print('Train size:', split.trainSet.size());
+  print('Test size (locked):', split.testSet.size());
+
+  var ntreeOptions = [50, 100, 200];
+  var mtryOptions  = [6, 9];
+  var leafOptions  = [1, 5, 10];
+
+  var tuningRows = [];
+
+  for (var a = 0; a < ntreeOptions.length; a++) {
+    for (var b = 0; b < mtryOptions.length; b++) {
+      for (var c = 0; c < leafOptions.length; c++) {
+
+        var ntree = ntreeOptions[a];
+        var mtry  = mtryOptions[b];
+        var leaf  = leafOptions[c];
+
+        var oaList = [];
+        var kappaList = [];
+        var precisionList = [];
+        var recallList = [];
+        var f1List = [];
+
+        for (var i = 0; i < 5; i++) {
+          var valPos = folds.trainPosFolded.filter(ee.Filter.eq('fold_id', i));
+          var valNeg = folds.trainNegFolded.filter(ee.Filter.eq('fold_id', i));
+          var cvVal = valPos.merge(valNeg);
+
+          var trPos = folds.trainPosFolded.filter(ee.Filter.neq('fold_id', i));
+          var trNeg = folds.trainNegFolded.filter(ee.Filter.neq('fold_id', i));
+          var cvTrain = trPos.merge(trNeg);
+
+          var clf = ee.Classifier.smileRandomForest({
+            numberOfTrees: ntree,
+            variablesPerSplit: mtry,
+            minLeafPopulation: leaf
+          }).train({
+            features: cvTrain,
+            classProperty: selectedLabel,
+            inputProperties: inputBands
+          });
+
+          var pred = cvVal.classify(clf);
+          var cm = pred.errorMatrix(selectedLabel, 'classification');
+          var m = metricsFromCM(cm);
+
+          oaList.push(m.get('OA'));
+          kappaList.push(m.get('Kappa'));
+          precisionList.push(m.get('Precision'));
+          recallList.push(m.get('Recall'));
+          f1List.push(m.get('F1'));
+        }
+
+        var oaStats = meanStd(oaList);
+        var kappaStats = meanStd(kappaList);
+        var precisionStats = meanStd(precisionList);
+        var recallStats = meanStd(recallList);
+        var f1Stats = meanStd(f1List);
+
+        tuningRows.push(ee.Feature(null, {
+          ntree: ntree,
+          mtry: mtry,
+          minLeafPop: leaf,
+
+          cv_oa_mean: oaStats.get('mean'),
+          cv_oa_std: oaStats.get('std'),
+
+          cv_kappa_mean: kappaStats.get('mean'),
+          cv_kappa_std: kappaStats.get('std'),
+
+          cv_precision_mean: precisionStats.get('mean'),
+          cv_precision_std: precisionStats.get('std'),
+
+          cv_recall_mean: recallStats.get('mean'),
+          cv_recall_std: recallStats.get('std'),
+
+          cv_f1_mean: f1Stats.get('mean'),
+          cv_f1_std: f1Stats.get('std')
+        }));
+      }
+    }
+  }
+
+  var tuningFC = ee.FeatureCollection(tuningRows);
+  var tuningSorted = tuningFC.sort('cv_f1_mean', false);
+
+  print('===== TUNING RESULTS =====');
+  print(tuningSorted);
+  print('Top CV F1 mean:', tuningSorted.aggregate_array('cv_f1_mean').slice(0, 10));
+  print('Top 5 tuning rows:', tuningSorted.limit(5));
+  print('Top ntree:', tuningSorted.aggregate_array('ntree').slice(0, 5));
+  print('Top mtry:', tuningSorted.aggregate_array('mtry').slice(0, 5));
+  print('Top minLeafPop:', tuningSorted.aggregate_array('minLeafPop').slice(0, 5));
+  print('Top CV F1 mean:', tuningSorted.aggregate_array('cv_f1_mean').slice(0, 5));
+  print('Top CV F1 std:', tuningSorted.aggregate_array('cv_f1_std').slice(0, 5));
+  print('Top CV Kappa mean:', tuningSorted.aggregate_array('cv_kappa_mean').slice(0, 5));
+  print('Top CV cv_recall_mean:', tuningSorted.aggregate_array('cv_recall_mean').slice(0, 5));
+}
+
+
+// ================================================
+// PART 5. MODE = FINAL
+// Retrain final model on FULL training set
+// Evaluate ONCE on held-out test set
+// ================================================
+if (MODE === 'FINAL') {
+
+  var split = makeSplit(selectedLabel);
+
+  print('===== FINAL MODEL =====');
+  print('Selected label:', selectedLabel);
+  print('Best params:', bestNtree, bestMtry, bestLeaf);
+
+  var finalClassifier = ee.Classifier.smileRandomForest({
+    numberOfTrees: bestNtree,
+    variablesPerSplit: bestMtry,
+    minLeafPopulation: bestLeaf
+  }).train({
+    features: split.trainSet,
+    classProperty: selectedLabel,
+    inputProperties: inputBands
+  });
+
+  var testPred = split.testSet.classify(finalClassifier);
+  var finalCM = testPred.errorMatrix(selectedLabel, 'classification');
+  var finalMetrics = metricsFromCM(finalCM);
+
+  print('===== FINAL TEST RESULTS =====');
+  print('Confusion Matrix:', finalCM);
+  print('Final Metrics:', finalMetrics);
+
+  print('===== RF IMPORTANCE =====');
+  print(finalClassifier.explain().get('importance'));
+
+  var probClassifier = finalClassifier.setOutputMode('PROBABILITY');
+  var gridProb = grid.classify(probClassifier);
+
+  Map.centerObject(grid, 6);
+
+  var gridProbStyled = gridProb.map(function(f) {
+    var p = ee.Number(f.get('classification'));
+
+    return f.set('style', {
+      color: '00000000',
+      fillColor: ee.Algorithms.If(
+        p.lt(0.2), '00ff0033',
+        ee.Algorithms.If(
+          p.lt(0.4), 'ccff0033',
+          ee.Algorithms.If(
+            p.lt(0.6), 'ffaa0033',
+            ee.Algorithms.If(
+              p.lt(0.8), 'ff550033',
+              'ff000055'
+            )
+          )
+        )
+      ),
+      width: 1
+    });
+  });
+
+  Map.addLayer(
+    gridProbStyled.style({styleProperty: 'style'}),
+    {},
+    'Grid probability'
+  );
+
+  var gridClass = grid.classify(finalClassifier);
+  var hotspots = gridClass.filter(ee.Filter.eq('classification', 1));
+
+  Map.addLayer(
+    hotspots.style({color: 'red', fillColor: 'ff000055', width: 1}),
+    {},
+    'Predicted hotspot grids'
+  );
+}
