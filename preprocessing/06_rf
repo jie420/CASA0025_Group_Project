@@ -20,7 +20,7 @@ var MODE = 'FINAL';   // 'LABEL_SELECTION' | 'TUNING' | 'FINAL'
 
 
 // ================================================
-// PART 1. GLOBAL SETTINGS
+// PART 1. GENERAL SETTINGS
 // ================================================
 var grid = table;
 
@@ -52,25 +52,45 @@ function metricsFromCM(cm) {
   var oa = ee.Number(cm.accuracy());
   var kappa = ee.Number(cm.kappa());
 
-  var producers = ee.Array(cm.producersAccuracy());
-  var consumers = ee.Array(cm.consumersAccuracy());
+  // confusion matrix layout:
+  //                predicted 0   predicted 1
+  // actual 0          TN            FP
+  // actual 1          FN            TP
+  var cmArray = ee.Array(cm.array());
 
-  // keep your currently working indexing
-  var recall = ee.Number(producers.get([1, 0]));
-  var precision = ee.Number(consumers.get([0, 1]));
+  var TN = ee.Number(cmArray.get([0, 0]));
+  var FP = ee.Number(cmArray.get([0, 1]));
+  var FN = ee.Number(cmArray.get([1, 0]));
+  var TP = ee.Number(cmArray.get([1, 1]));
+
+  var precision = ee.Algorithms.If(
+    TP.add(FP).gt(0),
+    TP.divide(TP.add(FP)),
+    ee.Number(0)
+  );
+
+  var recall = ee.Algorithms.If(
+    TP.add(FN).gt(0),
+    TP.divide(TP.add(FN)),
+    ee.Number(0)
+  );
 
   var f1 = ee.Algorithms.If(
-    precision.add(recall).gt(0),
-    ee.Number(2).multiply(precision).multiply(recall)
-      .divide(precision.add(recall)),
+    ee.Number(precision).add(ee.Number(recall)).gt(0),
+    ee.Number(2).multiply(ee.Number(precision)).multiply(ee.Number(recall))
+      .divide(ee.Number(precision).add(ee.Number(recall))),
     ee.Number(0)
   );
 
   return ee.Dictionary({
     OA: oa,
     Kappa: kappa,
-    Precision: precision,
-    Recall: recall,
+    TN: TN,
+    FP: FP,
+    FN: FN,
+    TP: TP,
+    Precision: ee.Number(precision),
+    Recall: ee.Number(recall),
     F1: ee.Number(f1)
   });
 }
