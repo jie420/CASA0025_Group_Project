@@ -3,27 +3,48 @@ project:
   output-dir: docs
 
 book:
-  title: "CASA0025 Final Assessment"
-  author: "Group Name"
-  date: "01/01/2024"
+  title: "Predicting Mongolia's Desertification"
+  subtitle: "A Google Earth Engine Application"
+  author: "Coven"
+  date: "04/16/2026"
   chapters:
     - index.qmd
-
   repo-actions: [edit]
   downloads: [pdf, epub]
   sharing: [twitter, facebook]
   favicon: favicon.ico
   sidebar:
     logo: casa_logo.png
-
-
+    style: floating
+    background: light
 
 format:
   html:
-    theme:
-      dark: darkly
-      light: cosmo
+    theme: [cosmo, styles.scss]
+    css: styles.css
     code-copy: true
     code-overflow: wrap
-    highlight-style: monokai.theme
-    linkcolor: "#34a832"
+    highlight-style: arrow
+    linkcolor: "#8b6f47"
+    toc: true
+    toc-title: ""
+    toc-depth: 3
+    toc-location: right
+    fontsize: 16px
+    mainfont: "Source Sans 3"
+    monofont: "JetBrains Mono"
+    include-after-body:
+      text: |
+        <footer class="custom-footer">
+          <span>CASA0025 Group Project</span>
+          <span>For all precomputation scripts and main app code, please visit:
+            <a href="https://github.com/jie420/CASA0025_Group_Project" target="_blank">
+              <i class="bi bi-github"></i>
+            </a>
+          </span>
+        </footer>
+    include-in-header:
+      text: |
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
