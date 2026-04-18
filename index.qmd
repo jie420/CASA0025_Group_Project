@@ -1,24 +1,84 @@
 ---
-title: "Mongolia Desertification Prediction"
+title: "Mongolia Land Degradation Risk Application"
 title-block-banner: images/banner1.jpg
 title-block-banner-color: "#faf6ed"
 ---
 
-# Project Summary 
+# Project Summary
 
 Fill in the sections below to provide a brief summary of your project. Each section should have no more than 100 words. Do not edit any of the headings.
 
-## Problem Statement 
+## Problem Statement
 
-What is the problem you’re trying to address using this application? 
+What is the problem you’re trying to address using this application?
 
-## End User 
+## End User
 
 Who are you building this application for? How does it address a need this community has?
 
 ## Data
 
-What data are you using? 
+```{=html}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Dataset</th>
+      <th>Description</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="5" class="category-cell">GEE</td>
+      <td>Elevation / Slope</td>
+      <td class="desc-cell">NASA SRTM Digital Elevation Model (30m)</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Land Cover</td>
+      <td class="desc-cell">MODIS Land Cover Type (2020)</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Hydrology</td>
+      <td class="desc-cell">WWF HydroSHEDS Flow Accumulation</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Soil Texture</td>
+      <td class="desc-cell">OpenLandMap Soil Texture Class (USDA System)</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Soil Type</td>
+      <td class="desc-cell">OpenLandMap Clay Content</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td rowspan="4" class="category-cell">Other</td>
+      <td>Historical Landslides</td>
+      <td class="desc-cell">Official reported landslide incident points (2011–2025)</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Census Population</td>
+      <td class="desc-cell">Official Population per District, 2021 Census</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>Country Boundary</td>
+      <td class="desc-cell">Official boundary layer</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+    <tr>
+      <td>District Boundaries</td>
+      <td class="desc-cell">Official boundaries of all districts</td>
+      <td><a href="#">Link</a></td>
+    </tr>
+  </tbody>
+</table>
+```
 
 ## Methodology
 
@@ -28,20 +88,21 @@ How are you using this data to address the problem?
 
 How does your application's interface work to address the needs of your end user?
 
-# The Application 
+# The Application
 
 Replace the link below with the link to your application.
 
-:::{.column-page}
+::: column-page
+<iframe src="https://ollielballinger.users.earthengine.app/view/turkey-earthquake" width="100%" height="700px">
 
-<iframe src='https://ollielballinger.users.earthengine.app/view/turkey-earthquake' width='100%' height='700px'></iframe>
-
+</iframe>
 :::
-# How it Works 
+
+# How it Works
 
 Use this section to explain how your application works using code blocks and text explanations (no more than 500 words excluding code):
 
-```js
+``` js
 Map.setCenter(35.51898, 33.90153, 15);
 
 Map.setOptions("satellite");
@@ -53,23 +114,28 @@ You can include images:
 
 ![Pixelwise T-Test, 2018](images/beirut_change_2020.jpg)
 
-and math:
-$$ \Large t = {\frac{\overline{x_1}-\overline{x_2}} {\sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}}}} $$
+and math: $$ \Large t = {\frac{\overline{x_1}-\overline{x_2}} {\sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}}}} $$
 
 ## Data Pro-precessing
+
 text
 
 ## Data Analysis
+
 text
 
 ## Interactive Visualization
+
 text
 
 ## Insights and Objectives
+
 text
 
 ## Limitations
+
 text
 
 # References
-- xxxx
+
+-   xxxx
