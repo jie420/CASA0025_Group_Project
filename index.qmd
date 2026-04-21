@@ -100,14 +100,6 @@ View application original code [here](https://code.earthengine.google.com/1674eb
 
 # How it Works
 
-``` js
-Map.setCenter(35.51898, 33.90153, 15);
-
-Map.setOptions("satellite");
-
-var aoi = ee.Geometry.Point(35.51898, 33.90153).buffer(3000);
-```
-
 You can include images:
 
 ![Pixelwise T-Test, 2018](images/beirut_change_2020.jpg)
@@ -124,11 +116,98 @@ text
 
 ## Interactive Visualization
 
-text
+### Transect Overview
+
+At launch, the application offers three view modes: Historical Change, Priority Areas, and Susceptibility Map.
+
+###### Historical Change
+
+A dropdown offers six layers covering observed degradation, recovery, net change, and land cover at two time periods. A side-by-side swipe compares land cover between 2016–2018 and 2021–2023.
+
+``` javascript
+// Swipe comparison: two linked maps with a draggable divider
+var leftMap = ui.Map();
+var rightMap = ui.Map();
+
+// Linker keeps pan/zoom synchronised across both sides
+var swipeLinker = ui.Map.Linker([leftMap, rightMap]);
+
+// SplitPanel with wipe:true provides the draggable divider
+var swipePanel = ui.SplitPanel({
+  firstPanel: leftMap,
+  secondPanel: rightMap,
+  wipe: true,
+  style: {stretch: 'both'}
+});
+
+// Populate left with 2016-18 composite, right with 2021-23
+leftMap.layers().add(layerLulcEarly());
+rightMap.layers().add(layerLulcRecent());
+```
+
+###### Priority Areas
+
+Grid cells in the top 15% by degradation share and with negative net change are flagged for monitoring.
+
+###### Susceptibility Map
+
+The Random Forest model outputs a continuous probability (0–1), visualised on a 5-step color ramp. A threshold slider filters the map to cells above a chosen probability.
+
+``` javascript
+// Server-side filter driven by a client-side slider
+function layerRFProbability() {
+  var filtered = grid.filter(
+    ee.Filter.gte(CONFIG.fieldRFProb, STATE.rfThreshold)
+  );
+  var styled = filtered.map(function(f) {
+    var v = ee.Number(f.get(CONFIG.fieldRFProb));
+    return f.set('style', {
+      fillColor: paletteFill(v, 0, 1, CONFIG.palRFProb),
+      width: 0
+    });
+  });
+  return ui.Map.Layer(styled.style({styleProperty: 'style'}));
+}
+
+// Slider widget: each change re-renders the filtered layer
+var rfThresholdSlider = ui.Slider({
+  min: 0, max: 1, value: 0, step: 0.05,
+  onChange: function(v) {
+    STATE.rfThreshold = v;
+    setActiveLayer();  // re-runs the filter with new threshold
+  }
+});
+```
+
+### Grid Inspector
+
+Works across all three view modes. Clicking any grid cell opens a side panel with its full data, linking map-level patterns with cell-level diagnostics.
+
+``` javascript
+// Click anywhere on the map to inspect the underlying grid cell
+mapPanel.onClick(function(coords) {
+  var point = ee.Geometry.Point([coords.lon, coords.lat]);
+  var cell = grid.filterBounds(point).first();
+  
+  // evaluate() pulls the server-side Feature to the client asynchronously
+  cell.evaluate(function(f) {
+    if (!f) return;
+    renderInspector(f.properties);  // show observed, modelled, drivers
+  });
+});
+```
+
+### Guided Examples
 
 ## Insights and Objectives
 
-text
+The app supports NGOs and environmental monitoring organisations working on land degradation in Mongolia:
+
+-   **Priority Screening**: Flags the top 15% of grid cells by observed degradation with negative net change, helping target limited budgets.
+
+-   **Risk Forecasting**: The Random Forest susceptibility map surfaces cells with priority-like climate, terrain, and soil conditions that have not yet shown strong change.
+
+-   **Transparent Diagnostics**: The grid inspector and probability slider reveal the drivers behind each flag, avoiding a black-box output.
 
 ## Limitations
 

@@ -198,7 +198,12 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#data-pro-precessing" id="toc-data-pro-precessing" class="nav-link" data-scroll-target="#data-pro-precessing">Data Pro-precessing</a></li>
   <li><a href="#data-analysis" id="toc-data-analysis" class="nav-link" data-scroll-target="#data-analysis">Data Analysis</a></li>
-  <li><a href="#interactive-visualization" id="toc-interactive-visualization" class="nav-link" data-scroll-target="#interactive-visualization">Interactive Visualization</a></li>
+  <li><a href="#interactive-visualization" id="toc-interactive-visualization" class="nav-link" data-scroll-target="#interactive-visualization">Interactive Visualization</a>
+  <ul class="collapse">
+  <li><a href="#transect-overview" id="toc-transect-overview" class="nav-link" data-scroll-target="#transect-overview">Transect Overview</a></li>
+  <li><a href="#grid-inspector" id="toc-grid-inspector" class="nav-link" data-scroll-target="#grid-inspector">Grid Inspector</a></li>
+  <li><a href="#guided-examples" id="toc-guided-examples" class="nav-link" data-scroll-target="#guided-examples">Guided Examples</a></li>
+  </ul></li>
   <li><a href="#insights-and-objectives" id="toc-insights-and-objectives" class="nav-link" data-scroll-target="#insights-and-objectives">Insights and Objectives</a></li>
   <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
   </ul></li>
@@ -305,11 +310,6 @@ window.Quarto = {
 </section>
 <section id="how-it-works" class="level1">
 <h1>How it Works</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Map</span><span class="op">.</span><span class="fu">setCenter</span>(<span class="fl">35.51898</span><span class="op">,</span> <span class="fl">33.90153</span><span class="op">,</span> <span class="dv">15</span>)<span class="op">;</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">Map</span><span class="op">.</span><span class="fu">setOptions</span>(<span class="st">"satellite"</span>)<span class="op">;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> aoi <span class="op">=</span> ee<span class="op">.</span><span class="at">Geometry</span><span class="op">.</span><span class="fu">Point</span>(<span class="fl">35.51898</span><span class="op">,</span> <span class="fl">33.90153</span>)<span class="op">.</span><span class="fu">buffer</span>(<span class="dv">3000</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You can include images:</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -328,11 +328,90 @@ window.Quarto = {
 </section>
 <section id="interactive-visualization" class="level2">
 <h2 class="anchored" data-anchor-id="interactive-visualization">Interactive Visualization</h2>
-<p>text</p>
+<section id="transect-overview" class="level3">
+<h3 class="anchored" data-anchor-id="transect-overview">Transect Overview</h3>
+<p>At launch, the application offers three view modes: Historical Change, Priority Areas, and Susceptibility Map.</p>
+<section id="historical-change" class="level6">
+<h6 class="anchored" data-anchor-id="historical-change">Historical Change</h6>
+<p>A dropdown offers six layers covering observed degradation, recovery, net change, and land cover at two time periods. A side-by-side swipe compares land cover between 2016–2018 and 2021–2023.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Swipe comparison: two linked maps with a draggable divider</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> leftMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rightMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Linker keeps pan/zoom synchronised across both sides</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipeLinker <span class="op">=</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Linker</span>([leftMap<span class="op">,</span> rightMap])<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">// SplitPanel with wipe:true provides the draggable divider</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipePanel <span class="op">=</span> ui<span class="op">.</span><span class="fu">SplitPanel</span>({</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">firstPanel</span><span class="op">:</span> leftMap<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">secondPanel</span><span class="op">:</span> rightMap<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">wipe</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> {<span class="dt">stretch</span><span class="op">:</span> <span class="st">'both'</span>}</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Populate left with 2016-18 composite, right with 2021-23</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>leftMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcEarly</span>())<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>rightMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcRecent</span>())<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="priority-areas" class="level6">
+<h6 class="anchored" data-anchor-id="priority-areas">Priority Areas</h6>
+<p>Grid cells in the top 15% by degradation share and with negative net change are flagged for monitoring.</p>
+</section>
+<section id="susceptibility-map" class="level6">
+<h6 class="anchored" data-anchor-id="susceptibility-map">Susceptibility Map</h6>
+<p>The Random Forest model outputs a continuous probability (0–1), visualised on a 5-step color ramp. A threshold slider filters the map to cells above a chosen probability.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Server-side filter driven by a client-side slider</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">layerRFProbability</span>() {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> filtered <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">,</span> STATE<span class="op">.</span><span class="at">rfThreshold</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> styled <span class="op">=</span> filtered<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">var</span> v <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span>))<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f<span class="op">.</span><span class="fu">set</span>(<span class="st">'style'</span><span class="op">,</span> {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">fillColor</span><span class="op">:</span> <span class="fu">paletteFill</span>(v<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> CONFIG<span class="op">.</span><span class="at">palRFProb</span>)<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">width</span><span class="op">:</span> <span class="dv">0</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Layer</span>(styled<span class="op">.</span><span class="fu">style</span>({<span class="dt">styleProperty</span><span class="op">:</span> <span class="st">'style'</span>}))<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Slider widget: each change re-renders the filtered layer</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rfThresholdSlider <span class="op">=</span> ui<span class="op">.</span><span class="fu">Slider</span>({</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">min</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">max</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="fl">0.05</span><span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">onChange</span><span class="op">:</span> <span class="kw">function</span>(v) {</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    STATE<span class="op">.</span><span class="at">rfThreshold</span> <span class="op">=</span> v<span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setActiveLayer</span>()<span class="op">;</span>  <span class="co">// re-runs the filter with new threshold</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="grid-inspector" class="level3">
+<h3 class="anchored" data-anchor-id="grid-inspector">Grid Inspector</h3>
+<p>Works across all three view modes. Clicking any grid cell opens a side panel with its full data, linking map-level patterns with cell-level diagnostics.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Click anywhere on the map to inspect the underlying grid cell</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>mapPanel<span class="op">.</span><span class="fu">onClick</span>(<span class="kw">function</span>(coords) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> point <span class="op">=</span> ee<span class="op">.</span><span class="at">Geometry</span><span class="op">.</span><span class="fu">Point</span>([coords<span class="op">.</span><span class="at">lon</span><span class="op">,</span> coords<span class="op">.</span><span class="at">lat</span>])<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> cell <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(point)<span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// evaluate() pulls the server-side Feature to the client asynchronously</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  cell<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>f) <span class="cf">return</span><span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">renderInspector</span>(f<span class="op">.</span><span class="at">properties</span>)<span class="op">;</span>  <span class="co">// show observed, modelled, drivers</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="guided-examples" class="level3">
+<h3 class="anchored" data-anchor-id="guided-examples">Guided Examples</h3>
+</section>
 </section>
 <section id="insights-and-objectives" class="level2">
 <h2 class="anchored" data-anchor-id="insights-and-objectives">Insights and Objectives</h2>
-<p>text</p>
+<p>The app supports NGOs and environmental monitoring organisations working on land degradation in Mongolia:</p>
+<ul>
+<li><p><strong>Priority Screening</strong>: Flags the top 15% of grid cells by observed degradation with negative net change, helping target limited budgets.</p></li>
+<li><p><strong>Risk Forecasting</strong>: The Random Forest susceptibility map surfaces cells with priority-like climate, terrain, and soil conditions that have not yet shown strong change.</p></li>
+<li><p><strong>Transparent Diagnostics</strong>: The grid inspector and probability slider reveal the drivers behind each flag, avoiding a black-box output.</p></li>
+</ul>
 </section>
 <section id="limitations" class="level2">
 <h2 class="anchored" data-anchor-id="limitations">Limitations</h2>
