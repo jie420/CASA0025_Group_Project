@@ -20,15 +20,21 @@ var MODE = 'FINAL';   // 'LABEL_SELECTION' | 'TUNING' | 'FINAL'
 
 
 // ================================================
-// PART 1. GENERAL SETTINGS
+// PART 1. GLOBAL SETTINGS
 // ================================================
 var grid = table;
+print('Grid size check (should be 7031):', grid.size());
 
-var inputBands = [
-  'prec', 'vpd', 'pet', 'ws',
-  'elev', 'slope', 'northness', 'eastness',
-  'clay', 'sand'
-];
+var climateBands = ['prec', 'vpd', 'pet', 'ws'];
+var terrainBands = ['elev', 'slope', 'northness', 'eastness'];
+var soilBands    = ['clay', 'sand'];
+var inputBands   = climateBands.concat(terrainBands).concat(soilBands);
+
+// Verify all inputBands exist in grid
+var missingBands = ee.List(inputBands).removeAll(
+  grid.first().propertyNames()
+);
+print('Missing bands (should be empty):', missingBands);
 
 var labels = ['y10_netneg', 'y15_netneg', 'y20_netneg'];
 
@@ -37,58 +43,66 @@ var splitSeed = 42;
 var foldSeed  = 123;
 
 // manually update these after each stage
-var selectedLabel = 'y15_netneg';   // fill after LABEL_SELECTION
-var bestNtree = 100;                // fill after TUNING
-var bestMtry  = 6;                  // fill after TUNING
-var bestLeaf  = 1;                  // fill after TUNING
+var selectedLabel = 'y15_netneg';
+var bestNtree = 200;
+var bestMtry  = 5;
+var bestLeaf  = 10;
 
 
 // ================================================
 // PART 2. HELPERS
 // ================================================
+
 function metricsFromCM(cm) {
   cm = ee.ConfusionMatrix(cm);
 
   var oa = ee.Number(cm.accuracy());
   var kappa = ee.Number(cm.kappa());
 
-  // confusion matrix layout:
-  //                predicted 0   predicted 1
-  // actual 0          TN            FP
-  // actual 1          FN            TP
-  var cmArray = ee.Array(cm.array());
+  var arr = ee.Array(cm.array());
 
-  var TN = ee.Number(cmArray.get([0, 0]));
-  var FP = ee.Number(cmArray.get([0, 1]));
-  var FN = ee.Number(cmArray.get([1, 0]));
-  var TP = ee.Number(cmArray.get([1, 1]));
+  // Rows = actual class, columns = predicted class
+  // Assumed binary class order: [0, 1]
+  //
+  //            Pred 0   Pred 1
+  // Actual 0    TN       FP
+  // Actual 1    FN       TP
+  var tn = ee.Number(arr.get([0, 0]));
+  var fp = ee.Number(arr.get([0, 1]));
+  var fn = ee.Number(arr.get([1, 0]));
+  var tp = ee.Number(arr.get([1, 1]));
 
+  // Precision = among predicted positives, how many are truly positive
   var precision = ee.Algorithms.If(
-    TP.add(FP).gt(0),
-    TP.divide(TP.add(FP)),
+    tp.add(fp).gt(0),
+    tp.divide(tp.add(fp)),
     ee.Number(0)
   );
 
+  // Recall = among actual positives, how many are correctly identified
   var recall = ee.Algorithms.If(
-    TP.add(FN).gt(0),
-    TP.divide(TP.add(FN)),
+    tp.add(fn).gt(0),
+    tp.divide(tp.add(fn)),
     ee.Number(0)
   );
 
+  // Harmonic mean of precision and recall
   var f1 = ee.Algorithms.If(
     ee.Number(precision).add(ee.Number(recall)).gt(0),
-    ee.Number(2).multiply(ee.Number(precision)).multiply(ee.Number(recall))
+    ee.Number(2)
+      .multiply(ee.Number(precision))
+      .multiply(ee.Number(recall))
       .divide(ee.Number(precision).add(ee.Number(recall))),
     ee.Number(0)
   );
 
   return ee.Dictionary({
+    TN: tn,
+    FP: fp,
+    FN: fn,
+    TP: tp,
     OA: oa,
     Kappa: kappa,
-    TN: TN,
-    FP: FP,
-    FN: FN,
-    TP: TP,
     Precision: ee.Number(precision),
     Recall: ee.Number(recall),
     F1: ee.Number(f1)
@@ -102,7 +116,6 @@ function meanStd(list) {
   return ee.Dictionary({mean: mean, std: std});
 }
 
-// build one fixed stratified 70/30 split for a given label
 function makeSplit(labelName) {
   var pos = grid.filter(ee.Filter.eq(labelName, 1))
                 .randomColumn('rand_split', splitSeed);
@@ -125,14 +138,15 @@ function makeSplit(labelName) {
   };
 }
 
-// create stratified folds inside training set
 function makeFolds(trainPos, trainNeg) {
   var trainPosFolded = trainPos.randomColumn('fold_rand', foldSeed).map(function(f) {
-    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).int());
+    // Convert a random number in [0, 1) into fold IDs: 0, 1, 2, 3, 4
+    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).floor());
   });
 
   var trainNegFolded = trainNeg.randomColumn('fold_rand', foldSeed).map(function(f) {
-    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).int());
+    // Apply the same fold assignment logic to the negative class
+    return f.set('fold_id', ee.Number(f.get('fold_rand')).multiply(5).floor());
   });
 
   return {
@@ -230,114 +244,18 @@ function evaluateLabel(labelName) {
 if (MODE === 'LABEL_SELECTION') {
   var summaryFC = ee.FeatureCollection(labels.map(evaluateLabel));
 
-  print('===== LABEL SELECTION SUMMARY =====');
+print('===== LABEL SELECTION SUMMARY =====');
   print(summaryFC);
-
-  print('Labels:', summaryFC.aggregate_array('label'));
-  print('CV F1 mean:', summaryFC.aggregate_array('cv_f1_mean'));
-  print('CV F1 std:', summaryFC.aggregate_array('cv_f1_std'));
-  print('CV Kappa mean:', summaryFC.aggregate_array('cv_kappa_mean'));
-  print('Train positive counts:', summaryFC.aggregate_array('train_pos_n'));
-  
-}
-
-// ================================================
-// PART 3. MODE = LABEL_SELECTION
-// Compare y10 / y15 / y20 using baseline RF
-// Training-set only
-// ================================================
-function evaluateLabel(labelName) {
-
-  print('==============================');
-  print('Evaluating label:', labelName);
-  print('==============================');
-
-  var split = makeSplit(labelName);
-
-  print('Train size:', split.trainSet.size());
-  print('Test size (locked):', split.testSet.size());
-  print('Train positive count:', split.trainPos.size());
-  print('Test positive count:', split.testPos.size());
-
-  var folds = makeFolds(split.trainPos, split.trainNeg);
-
-  var oaList = [];
-  var kappaList = [];
-  var precisionList = [];
-  var recallList = [];
-  var f1List = [];
-
-  for (var i = 0; i < 5; i++) {
-    var valPos = folds.trainPosFolded.filter(ee.Filter.eq('fold_id', i));
-    var valNeg = folds.trainNegFolded.filter(ee.Filter.eq('fold_id', i));
-    var cvVal = valPos.merge(valNeg);
-
-    var trPos = folds.trainPosFolded.filter(ee.Filter.neq('fold_id', i));
-    var trNeg = folds.trainNegFolded.filter(ee.Filter.neq('fold_id', i));
-    var cvTrain = trPos.merge(trNeg);
-
-    var clf = ee.Classifier.smileRandomForest({
-      numberOfTrees: 100
-    }).train({
-      features: cvTrain,
-      classProperty: labelName,
-      inputProperties: inputBands
+  summaryFC.evaluate(function(fc) {
+    fc.features.forEach(function(f) {
+      var p = f.properties;
+      print(p.label +
+            ' | F1=' + p.cv_f1_mean.toFixed(3) +
+            ' std=' + p.cv_f1_std.toFixed(3) +
+            ' Kappa=' + p.cv_kappa_mean.toFixed(3) +
+            ' train_pos=' + p.train_pos_n);
     });
-
-    var pred = cvVal.classify(clf);
-    var cm = pred.errorMatrix(labelName, 'classification');
-    var m = metricsFromCM(cm);
-
-    print('Fold ' + i + ' metrics:', m);
-
-    oaList.push(m.get('OA'));
-    kappaList.push(m.get('Kappa'));
-    precisionList.push(m.get('Precision'));
-    recallList.push(m.get('Recall'));
-    f1List.push(m.get('F1'));
-  }
-
-  var oaStats = meanStd(oaList);
-  var kappaStats = meanStd(kappaList);
-  var precisionStats = meanStd(precisionList);
-  var recallStats = meanStd(recallList);
-  var f1Stats = meanStd(f1List);
-
-  return ee.Feature(null, {
-    label: labelName,
-    train_n: split.trainSet.size(),
-    test_n_locked: split.testSet.size(),
-    train_pos_n: split.trainPos.size(),
-    test_pos_n_locked: split.testPos.size(),
-
-    cv_oa_mean: oaStats.get('mean'),
-    cv_oa_std: oaStats.get('std'),
-
-    cv_kappa_mean: kappaStats.get('mean'),
-    cv_kappa_std: kappaStats.get('std'),
-
-    cv_precision_mean: precisionStats.get('mean'),
-    cv_precision_std: precisionStats.get('std'),
-
-    cv_recall_mean: recallStats.get('mean'),
-    cv_recall_std: recallStats.get('std'),
-
-    cv_f1_mean: f1Stats.get('mean'),
-    cv_f1_std: f1Stats.get('std')
   });
-}
-
-if (MODE === 'LABEL_SELECTION') {
-  var summaryFC = ee.FeatureCollection(labels.map(evaluateLabel));
-
-  print('===== LABEL SELECTION SUMMARY =====');
-  print(summaryFC);
-
-  print('Labels:', summaryFC.aggregate_array('label'));
-  print('CV F1 mean:', summaryFC.aggregate_array('cv_f1_mean'));
-  print('CV F1 std:', summaryFC.aggregate_array('cv_f1_std'));
-  print('CV Kappa mean:', summaryFC.aggregate_array('cv_kappa_mean'));
-  print('Train positive counts:', summaryFC.aggregate_array('train_pos_n'));
   
 }
 
@@ -355,9 +273,9 @@ if (MODE === 'TUNING') {
   print('Train size:', split.trainSet.size());
   print('Test size (locked):', split.testSet.size());
 
-  var ntreeOptions = [50, 100, 200];
-  var mtryOptions  = [6, 9];
-  var leafOptions  = [1, 5, 10];
+  var ntreeOptions = [100, 200];
+  var mtryOptions  = [3, 5];
+  var leafOptions  = [5, 10, 20];
 
   var tuningRows = [];
 
@@ -438,19 +356,25 @@ if (MODE === 'TUNING') {
   var tuningFC = ee.FeatureCollection(tuningRows);
   var tuningSorted = tuningFC.sort('cv_f1_mean', false);
 
-  print('===== TUNING RESULTS =====');
+print('===== TUNING RESULTS =====');
   print(tuningSorted);
-  print('Top CV F1 mean:', tuningSorted.aggregate_array('cv_f1_mean').slice(0, 10));
-  print('Top 5 tuning rows:', tuningSorted.limit(5));
-  print('Top ntree:', tuningSorted.aggregate_array('ntree').slice(0, 5));
-  print('Top mtry:', tuningSorted.aggregate_array('mtry').slice(0, 5));
-  print('Top minLeafPop:', tuningSorted.aggregate_array('minLeafPop').slice(0, 5));
-  print('Top CV F1 mean:', tuningSorted.aggregate_array('cv_f1_mean').slice(0, 5));
-  print('Top CV F1 std:', tuningSorted.aggregate_array('cv_f1_std').slice(0, 5));
-  print('Top CV Kappa mean:', tuningSorted.aggregate_array('cv_kappa_mean').slice(0, 5));
-  print('Top CV cv_recall_mean:', tuningSorted.aggregate_array('cv_recall_mean').slice(0, 5));
-}
 
+  // Print top 5 results in readable format
+  tuningSorted.limit(5).evaluate(function(fc) {
+    print('===== TOP 5 TUNING RESULTS =====');
+    fc.features.forEach(function(f, i) {
+      var p = f.properties;
+      print('Rank ' + (i+1) +
+            ' | ntree=' + p.ntree +
+            ' mtry=' + p.mtry +
+            ' leaf=' + p.minLeafPop +
+            ' | F1=' + p.cv_f1_mean.toFixed(3) +
+            ' std=' + p.cv_f1_std.toFixed(3) +
+            ' Kappa=' + p.cv_kappa_mean.toFixed(3) +
+            ' Recall=' + p.cv_recall_mean.toFixed(3));
+    });
+  });
+}
 
 // ================================================
 // PART 5. MODE = FINAL
@@ -479,12 +403,59 @@ if (MODE === 'FINAL') {
   var finalCM = testPred.errorMatrix(selectedLabel, 'classification');
   var finalMetrics = metricsFromCM(finalCM);
 
-  print('===== FINAL TEST RESULTS =====');
-  print('Confusion Matrix:', finalCM);
-  print('Final Metrics:', finalMetrics);
+  // Training set evaluation for overfitting check
+  var trainPred = split.trainSet.classify(finalClassifier);
+  var trainCM = trainPred.errorMatrix(selectedLabel, 'classification');
+  var trainMetrics = metricsFromCM(trainCM);
 
-  print('===== RF IMPORTANCE =====');
-  print(finalClassifier.explain().get('importance'));
+var importance = ee.Dictionary(finalClassifier.explain().get('importance'));
+
+  ee.Dictionary({
+    trainMetrics: trainMetrics,
+    finalMetrics: finalMetrics,
+    importance: importance
+  }).evaluate(function(result) {
+    var tr = result.trainMetrics;
+    var te = result.finalMetrics;
+    var imp = result.importance;
+
+    print('===== FINAL SUMMARY =====');
+
+    print('--- Train metrics (overfitting check) ---');
+    print('  F1=' + tr.F1.toFixed(3) + ' Kappa=' + tr.Kappa.toFixed(3) +
+          ' OA=' + tr.OA.toFixed(3) +
+          ' Precision=' + tr.Precision.toFixed(3) +
+          ' Recall=' + tr.Recall.toFixed(3));
+    print('  TP=' + tr.TP + ' TN=' + tr.TN + ' FP=' + tr.FP + ' FN=' + tr.FN);
+
+    print('--- Test metrics ---');
+    print('  F1=' + te.F1.toFixed(3) + ' Kappa=' + te.Kappa.toFixed(3) +
+          ' OA=' + te.OA.toFixed(3) +
+          ' Precision=' + te.Precision.toFixed(3) +
+          ' Recall=' + te.Recall.toFixed(3));
+    print('  TP=' + te.TP + ' TN=' + te.TN + ' FP=' + te.FP + ' FN=' + te.FN);
+
+    print('--- RF importance (descending) ---');
+    var allSorted = inputBands
+      .map(function(b) { return {band: b, val: imp[b]}; })
+      .sort(function(a, b) { return b.val - a.val; });
+    print('  ' + allSorted.map(function(x, i) {
+      return (i+1) + '.' + x.band + '=' + x.val.toFixed(2);
+    }).join(' | '));
+
+    print('--- Importance by group ---');
+    [{name:'Climate', bands:climateBands},
+     {name:'Terrain', bands:terrainBands},
+     {name:'Soil',    bands:soilBands}
+    ].forEach(function(group) {
+      var sorted = group.bands
+        .map(function(b) { return {band: b, val: imp[b]}; })
+        .sort(function(a, b) { return b.val - a.val; });
+      var total = sorted.reduce(function(s, x) { return s + x.val; }, 0);
+      print('  ' + group.name + ' total=' + total.toFixed(2) + ': ' +
+            sorted.map(function(x) { return x.band + '=' + x.val.toFixed(2); }).join(', '));
+    });
+  });
 
   var probClassifier = finalClassifier.setOutputMode('PROBABILITY');
   var gridProb = grid.classify(probClassifier);
@@ -518,13 +489,19 @@ if (MODE === 'FINAL') {
     {},
     'Grid probability'
   );
+// Export probability FeatureCollection to Asset
+  Export.table.toAsset({
+    collection: gridProb,
+    description: 'grid_probability_asset',
+    assetId: 'projects/casa25-488411/assets/grid_y15_probability_f'
+  });
 
-  var gridClass = grid.classify(finalClassifier);
-  var hotspots = gridClass.filter(ee.Filter.eq('classification', 1));
-
-  Map.addLayer(
-    hotspots.style({color: 'red', fillColor: 'ff000055', width: 1}),
-    {},
-    'Predicted hotspot grids'
-  );
+  // Export probability FeatureCollection to Google Drive as CSV
+  Export.table.toDrive({
+    collection: gridProb,
+    description: 'grid_probability_drive',
+    folder: 'GEE_exports',
+    fileNamePrefix: 'grid_y15_probability_f',
+    fileFormat: 'CSV'
+  });
 }
