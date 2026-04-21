@@ -100,8 +100,6 @@ View application original code [here](https://code.earthengine.google.com/1674eb
 
 # How it Works
 
-Use this section to explain how your application works using code blocks and text explanations (no more than 500 words excluding code):
-
 ``` js
 Map.setCenter(35.51898, 33.90153, 15);
 
