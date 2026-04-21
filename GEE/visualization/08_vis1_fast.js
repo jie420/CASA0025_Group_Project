@@ -31,7 +31,7 @@ var CONFIG = {
   // TODO (after org confirms): swap to the RF-prob-enriched asset when exported.
   // New asset will include a `classification` field (0–1) from setOutputMode('PROBABILITY').
   gridAssetPath: 'projects/casa25-488411/assets/mongolia_grid_10km_predictors_early1',
-  gridAssetPath_withRF: 'projects/casa25-488411/assets/grid_y15_probability',
+  gridAssetPath_withRF: 'projects/casa25-488411/assets/grid_y15_probability_f',
 
   // ---- LULC time windows ----
   earlyStart: '2016-06-01', earlyEnd: '2018-09-30',
@@ -138,20 +138,20 @@ var basemapStyle = [
 var grid = ee.FeatureCollection(CONFIG.gridAssetPath);
 
 // Dynamic World composites for visual backdrop (Panel A, LULC layers).
-// Section 1 no
-//var dwEarly = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_early');
-//var dwRecent = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_recent');
+// Section 1 (fast but with noise)
+var dwEarly = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_early');
+var dwRecent = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_recent');
 
-// Section 2
-var dwEarly = ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
-  .filterDate(CONFIG.earlyStart, CONFIG.earlyEnd)
-  .filterBounds(CONFIG.aoi)
-  .select('label').mode().clip(CONFIG.aoi);
+// Section 2 (slow but without noise)
+//var dwEarly = ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+//  .filterDate(CONFIG.earlyStart, CONFIG.earlyEnd)
+//  .filterBounds(CONFIG.aoi)
+//  .select('label').mode().clip(CONFIG.aoi);
 
-var dwRecent = ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
-  .filterDate(CONFIG.recentStart, CONFIG.recentEnd)
-  .filterBounds(CONFIG.aoi)
-  .select('label').mode().clip(CONFIG.aoi);
+//var dwRecent = ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+//  .filterDate(CONFIG.recentStart, CONFIG.recentEnd)
+//  .filterBounds(CONFIG.aoi)
+//  .select('label').mode().clip(CONFIG.aoi);
 
 
 // ============================================================
@@ -387,27 +387,27 @@ function makeDivider() {
 }
 // --- Title block ---
 var titleLabel = ui.Label('Mongolia Land Degradation', {
-  fontSize: '23px', fontWeight: 'bold', margin: '6px 0 0 0', color: '222'
+  fontSize: '22px', fontWeight: 'bold', margin: '6px 0 0 0', color: '222'
 });
 var subtitleLabel = ui.Label('Risk explorer', {
-  fontSize: '16px', color: '777', margin: '0 0 8px 0'
+  fontSize: '17px', color: '777', margin: '0 0 8px 0'
 });
 
 // --- View mode selector ---
 var viewModeLabel = ui.Label('View mode', {
-  fontSize: '13px', fontWeight: 'bold', color: '333',
+  fontSize: '15px', fontWeight: 'bold', color: '333',
   margin: '8px 0 2px 0'
 });
 var viewModeHint = ui.Label('Choose what to display on the map', {
   fontSize: '10px', color: '888', margin: '0 0 6px 0'
 });
-var viewAButton = ui.Button('A. Historical change', function() {
+var viewAButton = ui.Button('Historical change', function() {
   STATE.viewMode = 'A'; updateControlPanel(); setActiveLayer();
 });
-var viewBButton = ui.Button('B. Priority areas', function() {
+var viewBButton = ui.Button('Priority areas', function() {
   STATE.viewMode = 'B'; updateControlPanel(); setActiveLayer();
 });
-var viewDButton = ui.Button('D. RF susceptibility', function() {
+var viewDButton = ui.Button('Susceptibility map', function() {
   STATE.viewMode = 'D'; updateControlPanel(); setActiveLayer();
 });
 
@@ -459,19 +459,29 @@ var controlPanel = ui.Panel({
     viewModeLabel,
     viewAButton, viewBButton, viewDButton,
   makeDivider(),
-  ui.Label('Layer', {fontSize: '13px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
-  ui.Label('Select a specific data view', {fontSize: '10px', color: '888', margin: '0 0 6px 0'}),
+  ui.Label('Layer', {fontSize: '15px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
+  ui.Label('Select a specific data view', {fontSize: '12px', color: '888', margin: '0 0 6px 0'}),
   subLayerSelect,
 
   makeDivider(),
-  ui.Label('Opacity', {fontSize: '13px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
-  ui.Label('Adjust layer transparency', {fontSize: '10px', color: '888', margin: '0 0 6px 0'}),
+  ui.Label('Opacity', {fontSize: '15px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
+  ui.Label('Adjust layer transparency', {fontSize: '12px', color: '888', margin: '0 0 6px 0'}),
   opacitySlider,
 
   makeDivider(),
-  ui.Label('Legend', {fontSize: '13px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
-  ui.Label('Current layer colour scale', {fontSize: '10px', color: '888', margin: '0 0 6px 0'}),
+  ui.Label('Legend', {fontSize: '15px', fontWeight: 'bold', color: '333', margin: '0 0 2px 0'}),
+  ui.Label('Current layer colour scale', {fontSize: '12px', color: '888', margin: '0 0 6px 0'}),
   legendPanel,
+  ui.Label(
+    'Tip: click any grid cell on the map to inspect its values.',
+    {
+      fontSize: '12px',
+      color: '666',
+      fontWeight: 'bold',
+      margin: '10px 0 0 0',
+      stretch: 'horizontal'
+    }
+  ),
     aboutButton
   ],
   style: {width: '320px', padding: '12px'}
@@ -595,7 +605,7 @@ function renderCategoricalLulcLegend() {
 
 function updateControlPanel() {
   // Visual feedback for the active view mode.
-  var activeStyle   = {backgroundColor: '1d9e75', color: 'white', fontWeight: 'bold'};
+  var activeStyle   = {backgroundColor: '1d9e75', color: '888', fontWeight: 'bold'};
   var inactiveStyle = {backgroundColor: 'white',  color: 'black', fontWeight: 'normal'};
 
   viewAButton.style().set(STATE.viewMode === 'A' ? activeStyle : inactiveStyle);
@@ -812,7 +822,7 @@ function showAboutModal() {
 }
 
 // ============================================================
-// SECTION 13 — LOADING OVERLAY
+// SECTION 12 — LOADING OVERLAY
 // ============================================================
 // GEE has no tile-load callback, so loading indicators are shown
 // briefly on layer switch and auto-hide after a heuristic timeout.
@@ -860,13 +870,8 @@ function showLoading(msg) {
   loadingLeft.style().set('shown', inSwipe);
   loadingRight.style().set('shown', inSwipe);
 
-// LULC layers take longer (ImageCollection mode reduction is expensive);
-// other layers are fast FeatureCollection renders.
-var isLulc = (STATE.viewMode === 'A' && 
-              (STATE.activeSubLayer === 'early' || 
-               STATE.activeSubLayer === 'recent' || 
-               STATE.activeSubLayer === 'swipe'));
-var duration = isLulc ? 15000 : 3500;
+// Duration is calibrated to each layer's typical render time.
+var duration = 3500;
 
 if (loadingTimeoutId) ui.util.clearTimeout(loadingTimeoutId);
 loadingTimeoutId = ui.util.setTimeout(function() {
@@ -878,7 +883,7 @@ loadingTimeoutId = ui.util.setTimeout(function() {
 }
 
 // ============================================================
-// SECTION 12 — APP BOOT
+// SECTION 13 — APP BOOT
 // ============================================================
 
 function setAppLayout() {
