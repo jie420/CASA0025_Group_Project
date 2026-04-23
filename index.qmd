@@ -6,7 +6,7 @@ title-block-banner-color: "#faf6ed"
 
 # Project Summary
 
-Fill in the sections below to provide a brief summary of your project. Each section should have no more than 100 words. Do not edit any of the headings.
+This application investigates land degradation dynamics in Mongolia's forest-grassland-desert transition zone using Google Earth Engine. By 2016, approximately 72% of Mongolia's land had experienced desertification (Zhang et al., 2022). By comparing Dynamic World V1 land cover composites between two periods (2016–2018 and 2021–2023), we detect degradation and recovery patterns across a 10km grid. A Random Forest classifier trained on climate, terrain, and soil drivers predicts each grid cell's degradation probability, identifying areas at risk before visible change occurs. The tool supports NGOs and environmental monitoring organisations in prioritising intervention across central-southern Mongolia.
 
 ## Problem Statement
 
@@ -14,7 +14,11 @@ What is the problem you’re trying to address using this application?
 
 ## End User
 
-Who are you building this application for? How does it address a need this community has?
+This project is designed for organisations involved in land degradation monitoring and dryland management in Mongolia, including national authorities such as the Ministry of Environment and Climate Change of Mongolia, as well as international NGO such as Green Mongolia Hub NGO. 
+
+While much of the available information of Mongolia’s land degradation remains either aggregated at national scales or presented as static maps, it is difficult to translate data into actionable insights.
+
+To address this need, our interactive GEE application is designed to support decision-making by identifying priority monitoring areas and providing interpretable insights into why these areas may be at risk, helping to shift from descriptive mapping to decision-oriented analysis.
 
 ## Data
 
@@ -86,11 +90,17 @@ How are you using this data to address the problem?
 
 ## Interface
 
-How does your application's interface work to address the needs of your end user?
+The interface is designed as a monitoring and screening tool rather than a static map. Users can switch between three main views: Historical Change, Priority Areas, and Susceptibility Map. This structure helps NGOs and environmental monitoring users move from observed evidence to modelled risk interpretation.
+
+![Main Views](images/interface1.png)
+
+To make the tool more interpretable, clicking any 10 km grid cell opens an inspector panel showing observed change indicators, modelled probability, priority status, and environmental drivers. The app also includes guided examples, administrative boundaries, a probability filter slider, and a study-area summary panel, making the interface suitable for both exploration and live demonstration.
+
+![Guided Examples](images/interface2.png)
 
 # The Application
 
-View application original code [here](https://code.earthengine.google.com/1674eb5eb7633403d6d3ac2644abe7e3).
+View application source code [here](https://code.earthengine.google.com/1674eb5eb7633403d6d3ac2644abe7e3).
 
 ::: column-page
 <iframe src="https://rs-and-bsabd.projects.earthengine.app/view/mongolia-land-degradation-fast" width="100%" height="700px">
@@ -100,15 +110,96 @@ View application original code [here](https://code.earthengine.google.com/1674eb
 
 # How it Works
 
-You can include images:
-
-![Pixelwise T-Test, 2018](images/beirut_change_2020.jpg)
-
-and math: $$ \Large t = {\frac{\overline{x_1}-\overline{x_2}} {\sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}}}} $$
-
 ## Data Pro-precessing
 
-text
+### Defining the Study Area
+
+A full-country Dynamic World composite was first visualised to identify where forest, grassland, and bare land co-occur. The AOI \[95°E, 45°N, 115°E, 48°N\] was selected to capture the grassland-desert ecotone in central-southern Mongolia.
+
+``` javascript
+// Load full Mongolia boundary for exploration
+var mongolia = ee.FeatureCollection("FAO/GAUL/2015/level0")  
+  .filter(ee.Filter.eq('ADM0_NAME', 'Mongolia'));
+
+// AOI defined based on visual inspection
+var aoi = ee.Geometry.Rectangle([95, 45, 115, 48]);
+```
+
+### Land Cover Compositing
+
+-   Two 3-year mode composites: **2016–2018** (early) and **2021–2023** (recent)
+-   **Growing season** only (Jun–Sep) to reduce cloud and snow contamination
+-   mode() selects the most frequent land cover class per pixel
+
+``` javascript
+var dwEarly = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2016-06-01', '2018-09-30')
+  .filterBounds(aoi)
+  .select('label')
+  .mode()
+  .clip(aoi);
+
+var dwRecent = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+  .filterDate('2021-06-01', '2023-09-30')
+  .filterBounds(aoi)
+  .select('label')
+  .mode()
+  .clip(aoi);
+
+// Verify class distribution
+print('Class distribution 2016-2018:',
+  dwEarly.reduceRegion({
+    reducer: ee.Reducer.frequencyHistogram(),
+    geometry: aoi, scale: 1000, maxPixels: 1e9
+}));
+```
+
+### Change Detection & Grid Aggregation
+
+-   Transitions encoded as from × 10 + to (e.g. grass→bare = 27, trees→bare = 17)
+
+-   Degradation: grass/trees/shrub → bare
+
+-   Recovery: bare → grass/trees/shrub
+
+A net change value per 10km grid cell was computed as recovery_mean − degradation_mean, with negative values indicating net degradation
+
+``` javascript
+// Encode transitions
+var transition = dwEarly.multiply(10).add(dwRecent) 
+  .updateMask(dwEarly.neq(dwRecent));
+
+// Degradation transitions (→ bare land)
+var grassToBare = transition.eq(27);   // grass  → bare
+var treesToBare = transition.eq(17);   // trees  → bare
+var shrubToBare = transition.eq(57);   // shrub  → bare
+
+var degradation = grassToBare
+  .add(treesToBare)
+  .add(shrubToBare)
+  .gt(0)
+  .rename('degradation');
+
+// Recovery transitions (bare → vegetation)
+var bareToGrass = transition.eq(72);   // bare → grass
+var bareToTrees = transition.eq(71);   // bare → trees
+var bareToShrub = transition.eq(75);   // bare → shrub
+
+var recovery = bareToGrass
+  .add(bareToTrees)
+  .add(bareToShrub)
+  .gt(0)
+  .rename('recovery');
+
+// Aggregate to 10km grid
+var gridStats = stackedImage.reduceRegions({ 
+  collection: grid, 
+  reducer: ee.Reducer.mean() 
+    .combine(ee.Reducer.mode(), null, true), 
+  scale: 500, 
+  crs: 'EPSG:4326' 
+});
+```
 
 ## Data Analysis
 
@@ -199,6 +290,87 @@ mapPanel.onClick(function(coords) {
 
 ### Guided Examples
 
+This section provides three one-click examples: an observed priority area, a high modelled probability cell, and a mixed or recovering cell that help users quickly learn how to interpret the provided data.
+
+``` javascript
+function getExampleFeature(kind) {
+  var gridInMongolia = grid.filterBounds(mongoliaBoundary.geometry());
+
+  if (kind === 'priority') {
+    return gridInMongolia
+      .filter(ee.Filter.eq(CONFIG.fieldPriority, 1))
+      .sort(CONFIG.fieldDegShare, false)
+      .first();
+  }
+
+  if (kind === 'model') {
+    return gridInMongolia
+      .sort(CONFIG.fieldRFProb, false)
+      .first();
+  }
+
+  if (kind === 'recovery') {
+    return gridInMongolia
+      .filter(ee.Filter.gt(CONFIG.fieldNetChange, 0))
+      .filter(ee.Filter.gt(CONFIG.fieldRecShare, 0))
+      .sort(CONFIG.fieldRecShare, false)
+      .first();
+  }
+}
+
+function goToExample(kind) {
+  var exampleName;
+  var targetView;
+  var targetLayer;
+
+  if (kind === 'priority') {
+    exampleName = 'Observed priority area';
+    targetView = 'B';
+    targetLayer = 'net';
+  } else if (kind === 'model') {
+    exampleName = 'High modelled probability';
+    targetView = 'D';
+    targetLayer = 'net';
+  } else {
+    exampleName = 'Mixed / recovering cell';
+    targetView = 'A';
+    targetLayer = 'rec';
+  }
+
+  var exampleFeature = ee.Feature(getExampleFeature(kind));
+  var centroid = exampleFeature.geometry().centroid(1);
+  var coords = centroid.coordinates();
+
+  exampleFeature.evaluate(function(featureResult) {
+    coords.evaluate(function(coordResult) {
+      var lon = coordResult[0];
+      var lat = coordResult[1];
+
+      STATE.viewMode = targetView;
+      STATE.activeSubLayer = targetLayer;
+      STATE.exampleFeature = exampleFeature;
+      STATE.exampleName = exampleName;
+      STATE.exampleKind = kind;
+
+      if (kind === 'priority') {
+        STATE.highlightMetric = CONFIG.fieldDegShare;
+      } else if (kind === 'model') {
+        STATE.highlightMetric = CONFIG.fieldRFProb;
+      } else {
+        STATE.highlightMetric = CONFIG.fieldRecShare;
+      }
+
+      setAppLayout();
+      setActiveLayer();
+
+      mapPanel.setCenter(lon, lat, 9);
+      renderInspector(featureResult.properties, null);
+      renderExampleCallout(kind, featureResult.properties);
+    });
+  });
+}
+```
+
 ## Insights and Objectives
 
 The app supports NGOs and environmental monitoring organisations working on land degradation in Mongolia:
@@ -211,8 +383,16 @@ The app supports NGOs and environmental monitoring organisations working on land
 
 ## Limitations
 
-text
+-   **Data Quality**: Dynamic World V1 relies on Sentinel-2 imagery, which is susceptible to cloud contamination. Although growing-season compositing reduces noise, classification errors may persist in areas with persistent cloud cover.
+
+<!-- -->
+
+-   **Subjectivity of AOI Definition**: The transition zone boundary was defined through visual inspection of land cover distribution rather than established ecological classifications, introducing subjectivity in the study area delineation.
+
+<!-- -->
+
+-   **Loss of Spatial Detail at 10km Grid**: Aggregating pixel-level change data to 10km grid cells may obscure localised degradation hotspots, reducing the precision available for targeted intervention planning.
 
 # References
 
--   xxxx
+-   Zhang, Y., Wang, J., Wang, Y., Ochir, A., & Togtokh, C. (2022). Land Cover Change Analysis to Assess Sustainability of Development in the Mongolian Plateau over 30 Years. Sustainability, 14(10), 6129. https://doi.org/10.3390/su14106129
