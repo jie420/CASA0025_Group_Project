@@ -30,15 +30,20 @@ This project is designed for organizations involved in land degradation monitori
   </thead>
   <tbody>
     <tr>
-      <td rowspan="6" class="category-cell">GEE</td>
+      <td rowspan="7" class="category-cell">GEE</td>
       <td>Dynamic World V1</td>
       <td class="desc-cell">10m land cover classification, composited for 2016–2018 and 2021–2023</td>
       <td><a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1">Link</a></td>
     </tr>
     <tr>
-      <td>FAO GAUL 2015</td>
+      <td>FAO GAUL 2015 Level 0</td>
       <td class="desc-cell">Global country boundaries, used to define Mongolia study extent</td>
       <td><a href="https://developers.google.com/earth-engine/datasets/catalog/FAO_GAUL_2015_level0">Link</a></td>
+    </tr>
+        <tr>
+      <td>FAO GAUL 2015 Level 1</td>
+      <td class="desc-cell">Mongolia province-level administrative boundaries, used as a reference layer in the interface</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/FAO_GAUL_2015_level1">Link</a></td>
     </tr>
     <tr>
       <td>TerraClimate</td>
@@ -441,9 +446,14 @@ mapPanel.onClick(function(coords) {
 This section provides three one-click examples: **an observed priority area, a high modelled probability cell, and a mixed or recovering cell** that help users quickly learn how to interpret the provided data.
 
 ``` javascript
+// Pick one representative example grid cell for the guided demo.
+// The examples are restricted to Mongolia so that the app does not
+// accidentally select cells outside the country but still inside the AOI rectangle.
 function getExampleFeature(kind) {
   var gridInMongolia = grid.filterBounds(mongoliaBoundary.geometry());
 
+  // Example 1: an observed priority area.
+  // We choose the priority cell with the highest observed degradation share.
   if (kind === 'priority') {
     return gridInMongolia
       .filter(ee.Filter.eq(CONFIG.fieldPriority, 1))
@@ -451,12 +461,17 @@ function getExampleFeature(kind) {
       .first();
   }
 
+  // Example 2: a high modelled-risk cell.
+  // We choose the cell with the highest Random Forest probability.
   if (kind === 'model') {
     return gridInMongolia
       .sort(CONFIG.fieldRFProb, false)
       .first();
   }
 
+  // Example 3: a recovering or mixed-change cell.
+  // We choose a cell with positive net change and high recovery share.
+  // This gives users a contrast case, not just degradation examples.
   if (kind === 'recovery') {
     return gridInMongolia
       .filter(ee.Filter.gt(CONFIG.fieldNetChange, 0))
@@ -466,40 +481,54 @@ function getExampleFeature(kind) {
   }
 }
 
+
+// Jump to the selected guided example.
+// This function changes the map view, highlights the selected grid cell,
+// opens the inspector, and shows the short explanation callout.
 function goToExample(kind) {
   var exampleName;
   var targetView;
   var targetLayer;
 
+  // Set the map mode and layer depending on which example the user clicked.
   if (kind === 'priority') {
     exampleName = 'Observed priority area';
-    targetView = 'B';
+    targetView = 'B';       // Priority Areas view
     targetLayer = 'net';
   } else if (kind === 'model') {
     exampleName = 'High modelled probability';
-    targetView = 'D';
+    targetView = 'D';       // Susceptibility Map view
     targetLayer = 'net';
   } else {
     exampleName = 'Mixed / recovering cell';
-    targetView = 'A';
-    targetLayer = 'rec';
+    targetView = 'A';       // Historical Change view
+    targetLayer = 'rec';    // Recovery share layer
   }
 
+  // Get the selected example cell from Earth Engine.
   var exampleFeature = ee.Feature(getExampleFeature(kind));
+
+  // Use the centroid so the map can zoom to the middle of the grid cell.
   var centroid = exampleFeature.geometry().centroid(1);
   var coords = centroid.coordinates();
 
+  // Bring the server-side feature data to the client side,
+  // so we can use its properties in the inspector and callout.
   exampleFeature.evaluate(function(featureResult) {
+
+    // Bring the centroid coordinates to the client side for map centering.
     coords.evaluate(function(coordResult) {
       var lon = coordResult[0];
       var lat = coordResult[1];
 
+      // Update the app state so the right layer and highlight are shown.
       STATE.viewMode = targetView;
       STATE.activeSubLayer = targetLayer;
       STATE.exampleFeature = exampleFeature;
       STATE.exampleName = exampleName;
       STATE.exampleKind = kind;
 
+      // Highlight the most relevant metric in the inspector.
       if (kind === 'priority') {
         STATE.highlightMetric = CONFIG.fieldDegShare;
       } else if (kind === 'model') {
@@ -508,10 +537,14 @@ function goToExample(kind) {
         STATE.highlightMetric = CONFIG.fieldRecShare;
       }
 
+      // Refresh the app layout and visible map layer.
       setAppLayout();
       setActiveLayer();
 
+      // Zoom to the selected example cell.
       mapPanel.setCenter(lon, lat, 9);
+
+      // Open the inspector and the explanation box for this example.
       renderInspector(featureResult.properties, null);
       renderExampleCallout(kind, featureResult.properties);
     });
