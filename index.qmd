@@ -10,15 +10,11 @@ This application investigates land degradation dynamics in Mongolia's forest-gra
 
 ## Problem Statement
 
-What is the problem you’re trying to address using this application?
+This application addresses the problem that land degradation in Mongolia’s forest–grassland–desert transition zone is spatially uneven, but it is often difficult to identify which areas already show strong degradation signals and which areas may become more vulnerable. Change maps alone can show that land cover has changed, but they do not clearly support priority-setting. Our app aims to help users detect degradation hotspots, compare conditions across 10 km grid cells, and identify areas that may need earlier monitoring or intervention.
 
 ## End User
 
-This project is designed for organisations involved in land degradation monitoring and dryland management in Mongolia, including national authorities such as the Ministry of Environment and Climate Change of Mongolia, as well as international NGO such as Green Mongolia Hub NGO. 
-
-While much of the available information of Mongolia’s land degradation remains either aggregated at national scales or presented as static maps, it is difficult to translate data into actionable insights.
-
-To address this need, our interactive GEE application is designed to support decision-making by identifying priority monitoring areas and providing interpretable insights into why these areas may be at risk, helping to shift from descriptive mapping to decision-oriented analysis.
+This project is designed for organizations involved in land degradation monitoring and dryland management in Mongolia, including the Ministry of Environment and Climate Change and Green Mongolia Hub NGO. Currently, land degradation information often remains aggregated at national scales or presented as static maps, making it difficult to translate into actionable insights. To address this, our interactive GEE application supports decision-making by identifying priority monitoring areas and explaining their underlying risks, shifting from descriptive mapping to decision-oriented analysis.
 
 ## Data
 
@@ -34,51 +30,35 @@ To address this need, our interactive GEE application is designed to support dec
   </thead>
   <tbody>
     <tr>
-      <td rowspan="5" class="category-cell">GEE</td>
-      <td>Elevation / Slope</td>
-      <td class="desc-cell">NASA SRTM Digital Elevation Model (30m)</td>
-      <td><a href="#">Link</a></td>
+      <td rowspan="6" class="category-cell">GEE</td>
+      <td>Dynamic World V1</td>
+      <td class="desc-cell">10m land cover classification, composited for 2016–2018 and 2021–2023</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1">Link</a></td>
     </tr>
     <tr>
-      <td>Land Cover</td>
-      <td class="desc-cell">MODIS Land Cover Type (2020)</td>
-      <td><a href="#">Link</a></td>
+      <td>FAO GAUL 2015</td>
+      <td class="desc-cell">Global country boundaries, used to define Mongolia study extent</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/FAO_GAUL_2015_level0">Link</a></td>
     </tr>
     <tr>
-      <td>Hydrology</td>
-      <td class="desc-cell">WWF HydroSHEDS Flow Accumulation</td>
-      <td><a href="#">Link</a></td>
+      <td>TerraClimate</td>
+      <td class="desc-cell">Monthly climate data (precipitation, VPD, PET, wind speed), composited for 2016–2018</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/IDAHO_EPSCOR_TERRACLIMATE">Link</a></td>
     </tr>
     <tr>
-      <td>Soil Texture</td>
-      <td class="desc-cell">OpenLandMap Soil Texture Class (USDA System)</td>
-      <td><a href="#">Link</a></td>
+      <td>SRTM DEM</td>
+      <td class="desc-cell">Elevation, slope, and aspect (decomposed into northness and eastness)</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003">Link</a></td>
     </tr>
     <tr>
-      <td>Soil Type</td>
-      <td class="desc-cell">OpenLandMap Clay Content</td>
-      <td><a href="#">Link</a></td>
+      <td>OpenLandMap Clay</td>
+      <td class="desc-cell">Topsoil clay content (0cm depth), used as soil texture driver</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/OpenLandMap_SOL_SOL_CLAY-WFRACTION_USDA-3A1A1A_M_v02">Link</a></td>
     </tr>
     <tr>
-      <td rowspan="4" class="category-cell">Other</td>
-      <td>Historical Landslides</td>
-      <td class="desc-cell">Official reported landslide incident points (2011–2025)</td>
-      <td><a href="#">Link</a></td>
-    </tr>
-    <tr>
-      <td>Census Population</td>
-      <td class="desc-cell">Official Population per District, 2021 Census</td>
-      <td><a href="#">Link</a></td>
-    </tr>
-    <tr>
-      <td>Country Boundary</td>
-      <td class="desc-cell">Official boundary layer</td>
-      <td><a href="#">Link</a></td>
-    </tr>
-    <tr>
-      <td>District Boundaries</td>
-      <td class="desc-cell">Official boundaries of all districts</td>
-      <td><a href="#">Link</a></td>
+      <td>OpenLandMap Sand</td>
+      <td class="desc-cell">Topsoil sand content (0cm depth), used as soil texture driver</td>
+      <td><a href="https://developers.google.com/earth-engine/datasets/catalog/OpenLandMap_SOL_SOL_SAND-WFRACTION_USDA-3A1A1A_M_v02">Link</a></td>
     </tr>
   </tbody>
 </table>
@@ -86,7 +66,7 @@ To address this need, our interactive GEE application is designed to support dec
 
 ## Methodology
 
-How are you using this data to address the problem?
+We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023, compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots and to train a **Random Forest model** with climate, terrain, and soil variables, so the app can show both current degradation patterns and areas of higher concern.
 
 ## Interface
 
@@ -203,7 +183,175 @@ var gridStats = stackedImage.reduceRegions({
 
 ## Data Analysis
 
-text
+### Data Cleaning and Hotspot Preparation
+
+This notebook cleaned the 10 km grid dataset, converted pixel-level change ratios into whole-grid degradation indicators, identified priority hotspot cells, and exported spatial outputs for later mapping and modelling.
+
+``` javascript
+df_clean = df[df["changed_mean"].notna()].copy()
+df_clean["degradation_mean"] = df_clean["degradation_mean"].fillna(0)
+df_clean["recovery_mean"] = df_clean["recovery_mean"].fillna(0)
+
+df_clean["degradation_share_allpx"] = (
+    df_clean["changed_mean"] * df_clean["degradation_mean"]
+)
+df_clean["recovery_share_allpx"] = (
+    df_clean["changed_mean"] * df_clean["recovery_mean"]
+)
+df_clean["net_change_allpx"] = (
+    df_clean["recovery_share_allpx"] - df_clean["degradation_share_allpx"]
+)
+
+deg_threshold = df_clean["degradation_share_allpx"].quantile(0.95)
+net_threshold = df_clean["net_change_allpx"].quantile(0.05)
+```
+
+### Net-Negative Hotspot Labels
+
+Positive labels were assigned only to highly degraded grid cells with negative net change, producing stricter and more credible modelling targets.
+
+``` javascript
+var pct = grid.reduceColumns({
+  reducer: ee.Reducer.percentile([80, 85, 90]),
+  selectors: ['degradation_share_allpx']
+});
+
+var q80 = ee.Number(pct.get('p80'));
+var q85 = ee.Number(pct.get('p85'));
+var q90 = ee.Number(pct.get('p90'));
+
+var gridLabeledB = grid.map(function(f) {
+  var deg = ee.Number(f.get('degradation_share_allpx'));
+  var net = ee.Number(f.get('net_change_allpx'));
+  var isNetNeg = net.lt(0);
+
+  return f.set({
+    y20_netneg: deg.gte(q80).and(isNetNeg).int(),
+    y15_netneg: deg.gte(q85).and(isNetNeg).int(),
+    y10_netneg: deg.gte(q90).and(isNetNeg).int()
+  });
+});
+```
+
+### Early Driver Extraction for RF
+
+This script combined stricter net-negative labels with early-period climate, terrain and soil drivers, then aggregated all variables to the 10 km grid for Random Forest training. 
+
+``` javascript
+var gridLabeled = grid.map(function(f) {
+  var deg = ee.Number(f.get('degradation_share_allpx'));
+  var net = ee.Number(f.get('net_change_allpx'));
+  var isNetNeg = net.lt(0);
+
+  return f.set({
+    y20_netneg: deg.gte(q80).and(isNetNeg).int(),
+    y15_netneg: deg.gte(q85).and(isNetNeg).int(),
+    y10_netneg: deg.gte(q90).and(isNetNeg).int()
+  });
+});
+
+var tc = ee.ImageCollection('IDAHO_EPSCOR/TERRACLIMATE')
+  .filterDate('2016-06-01', '2018-09-30')
+  .filterBounds(aoi);
+
+var prec = tc.select('pr').mean().clip(aoi).rename('prec');
+var vpd  = tc.select('vpd').mean().multiply(0.01).clip(aoi).rename('vpd');
+var pet  = tc.select('pet').mean().multiply(0.1).clip(aoi).rename('pet');
+var ws   = tc.select('vs').mean().multiply(0.01).clip(aoi).rename('ws');
+
+var dem = ee.Image('USGS/SRTMGL1_003').clip(aoi);
+var elev = dem.rename('elev');
+var slope = ee.Terrain.slope(dem).rename('slope');
+var aspectRad = ee.Terrain.aspect(dem).multiply(Math.PI).divide(180);
+var northness = aspectRad.cos().rename('northness');
+var eastness = aspectRad.sin().rename('eastness');
+
+var driverStack = prec.addBands(vpd).addBands(pet).addBands(ws)
+  .addBands(elev).addBands(slope)
+  .addBands(northness).addBands(eastness)
+  .addBands(clay).addBands(sand);
+
+var gridFinal = driverStack.reduceRegions({
+  collection: gridLabeled,
+  reducer: ee.Reducer.mean(),
+  scale: 500,
+  crs: 'EPSG:4326'
+});
+```
+
+### Random Forest Selection and Prediction
+
+This script compared candidate labels, tuned Random Forest settings with 5-fold cross-validation, trained the final model, and exported grid-level degradation probabilities.
+
+``` javascript
+var MODE = 'FINAL';
+
+function makeSplit(labelName) {
+  var pos = grid.filter(ee.Filter.eq(labelName, 1))
+                .randomColumn('rand_split', splitSeed);
+  var neg = grid.filter(ee.Filter.eq(labelName, 0))
+                .randomColumn('rand_split', splitSeed);
+
+  return {
+    trainSet: pos.filter(ee.Filter.lt('rand_split', 0.70))
+                 .merge(neg.filter(ee.Filter.lt('rand_split', 0.70))),
+    testSet: pos.filter(ee.Filter.gte('rand_split', 0.70))
+                .merge(neg.filter(ee.Filter.gte('rand_split', 0.70)))
+  };
+}
+
+var finalClassifier = ee.Classifier.smileRandomForest({
+  numberOfTrees: bestNtree,
+  variablesPerSplit: bestMtry,
+  minLeafPopulation: bestLeaf
+}).train({
+  features: split.trainSet,
+  classProperty: selectedLabel,
+  inputProperties: inputBands
+});
+
+var probClassifier = finalClassifier.setOutputMode('PROBABILITY');
+var gridProb = grid.classify(probClassifier);
+```
+
+### Random Forest Tuning and Threshold Selection 
+
+This workflow compared candidate labels, tuned Random Forest hyperparameters and decision thresholds with 5-fold cross-validation, then generated final probability and hotspot maps.
+
+``` javascript
+function makeSplit(labelName) {
+  var pos = grid.filter(ee.Filter.eq(labelName, 1))
+                .randomColumn('rand_split', splitSeed);
+  var neg = grid.filter(ee.Filter.eq(labelName, 0))
+                .randomColumn('rand_split', splitSeed);
+
+  return {
+    trainSet: pos.filter(ee.Filter.lt('rand_split', 0.70))
+                 .merge(neg.filter(ee.Filter.lt('rand_split', 0.70))),
+    testSet: pos.filter(ee.Filter.gte('rand_split', 0.70))
+                .merge(neg.filter(ee.Filter.gte('rand_split', 0.70)))
+  };
+}
+
+var thresholds = [0.5, 0.7, 0.9];
+
+var clfProb = ee.Classifier.smileRandomForest({
+  numberOfTrees: ntree,
+  variablesPerSplit: mtry,
+  minLeafPopulation: leaf
+}).train({
+  features: cvTrain,
+  classProperty: selectedLabel,
+  inputProperties: inputBands
+}).setOutputMode('PROBABILITY');
+
+var valWithProb = cvVal.classify(clfProb);
+
+var valWithPred = valWithProb.map(function(feat) {
+  var p = ee.Number(feat.get('classification'));
+  return feat.set('pred_class', p.gte(t));
+});
+```
 
 ## Interactive Visualization
 

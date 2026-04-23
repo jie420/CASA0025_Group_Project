@@ -74,7 +74,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-b186236566720657199a8ecd82ed6718.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-48795d6adabacad3d9a8ddbc886580e6.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-888c4982847663f69cc5d8c9078cf0d2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -173,7 +173,14 @@ background-size: cover;
   <li><a href="#land-cover-compositing" id="toc-land-cover-compositing" class="nav-link" data-scroll-target="#land-cover-compositing">Land Cover Compositing</a></li>
   <li><a href="#change-detection-grid-aggregation" id="toc-change-detection-grid-aggregation" class="nav-link" data-scroll-target="#change-detection-grid-aggregation">Change Detection &amp; Grid Aggregation</a></li>
   </ul></li>
-  <li><a href="#data-analysis" id="toc-data-analysis" class="nav-link" data-scroll-target="#data-analysis">Data Analysis</a></li>
+  <li><a href="#data-analysis" id="toc-data-analysis" class="nav-link" data-scroll-target="#data-analysis">Data Analysis</a>
+  <ul class="collapse">
+  <li><a href="#data-cleaning-and-hotspot-preparation" id="toc-data-cleaning-and-hotspot-preparation" class="nav-link" data-scroll-target="#data-cleaning-and-hotspot-preparation">Data Cleaning and Hotspot Preparation</a></li>
+  <li><a href="#net-negative-hotspot-labels" id="toc-net-negative-hotspot-labels" class="nav-link" data-scroll-target="#net-negative-hotspot-labels">Net-Negative Hotspot Labels</a></li>
+  <li><a href="#early-driver-extraction-for-rf" id="toc-early-driver-extraction-for-rf" class="nav-link" data-scroll-target="#early-driver-extraction-for-rf">Early Driver Extraction for RF</a></li>
+  <li><a href="#random-forest-selection-and-prediction" id="toc-random-forest-selection-and-prediction" class="nav-link" data-scroll-target="#random-forest-selection-and-prediction">Random Forest Selection and Prediction</a></li>
+  <li><a href="#random-forest-tuning-and-threshold-selection" id="toc-random-forest-tuning-and-threshold-selection" class="nav-link" data-scroll-target="#random-forest-tuning-and-threshold-selection">Random Forest Tuning and Threshold Selection&nbsp;</a></li>
+  </ul></li>
   <li><a href="#interactive-visualization" id="toc-interactive-visualization" class="nav-link" data-scroll-target="#interactive-visualization">Interactive Visualization</a>
   <ul class="collapse">
   <li><a href="#transect-overview" id="toc-transect-overview" class="nav-link" data-scroll-target="#transect-overview">Transect Overview</a></li>
@@ -199,13 +206,11 @@ background-size: cover;
 <p>This application investigates land degradation dynamics in Mongolia’s forest-grassland-desert transition zone using Google Earth Engine. By 2016, approximately 72% of Mongolia’s land had experienced desertification (Zhang et al., 2022). By comparing Dynamic World V1 land cover composites between two periods (2016–2018 and 2021–2023), we detect degradation and recovery patterns across a 10km grid. A Random Forest classifier trained on climate, terrain, and soil drivers predicts each grid cell’s degradation probability, identifying areas at risk before visible change occurs. The tool supports NGOs and environmental monitoring organisations in prioritising intervention across central-southern Mongolia.</p>
 <section id="problem-statement" class="level2">
 <h2 class="anchored" data-anchor-id="problem-statement">Problem Statement</h2>
-<p>What is the problem you’re trying to address using this application?</p>
+<p>This application addresses the problem that land degradation in Mongolia’s forest–grassland–desert transition zone is spatially uneven, but it is often difficult to identify which areas already show strong degradation signals and which areas may become more vulnerable. Change maps alone can show that land cover has changed, but they do not clearly support priority-setting. Our app aims to help users detect degradation hotspots, compare conditions across 10 km grid cells, and identify areas that may need earlier monitoring or intervention.</p>
 </section>
 <section id="end-user" class="level2">
 <h2 class="anchored" data-anchor-id="end-user">End User</h2>
-<p>This project is designed for organisations involved in land degradation monitoring and dryland management in Mongolia, including national authorities such as the Ministry of Environment and Climate Change of Mongolia, as well as international NGO such as Green Mongolia Hub NGO.&nbsp;</p>
-<p>While much of the available information of Mongolia’s land degradation remains either aggregated at national scales or presented as static maps, it is difficult to translate data into actionable insights.</p>
-<p>To address this need, our interactive GEE application is designed to support decision-making by identifying priority monitoring areas and providing interpretable insights into why these areas may be at risk, helping to shift from descriptive mapping to decision-oriented analysis.</p>
+<p>This project is designed for organizations involved in land degradation monitoring and dryland management in Mongolia, including the Ministry of Environment and Climate Change and Green Mongolia Hub NGO. Currently, land degradation information often remains aggregated at national scales or presented as static maps, making it difficult to translate into actionable insights. To address this, our interactive GEE application supports decision-making by identifying priority monitoring areas and explaining their underlying risks, shifting from descriptive mapping to decision-oriented analysis.</p>
 </section>
 <section id="data" class="level2">
 <h2 class="anchored" data-anchor-id="data">Data</h2>
@@ -220,58 +225,42 @@ background-size: cover;
 </thead>
 <tbody>
 <tr class="odd">
-<td rowspan="5" class="category-cell">GEE</td>
-<td>Elevation / Slope</td>
-<td class="desc-cell">NASA SRTM Digital Elevation Model (30m)</td>
-<td><a href="#">Link</a></td>
+<td rowspan="6" class="category-cell">GEE</td>
+<td>Dynamic World V1</td>
+<td class="desc-cell">10m land cover classification, composited for 2016–2018 and 2021–2023</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1">Link</a></td>
 </tr>
 <tr class="even">
-<td>Land Cover</td>
-<td class="desc-cell">MODIS Land Cover Type (2020)</td>
-<td><a href="#">Link</a></td>
+<td>FAO GAUL 2015</td>
+<td class="desc-cell">Global country boundaries, used to define Mongolia study extent</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/FAO_GAUL_2015_level0">Link</a></td>
 </tr>
 <tr class="odd">
-<td>Hydrology</td>
-<td class="desc-cell">WWF HydroSHEDS Flow Accumulation</td>
-<td><a href="#">Link</a></td>
+<td>TerraClimate</td>
+<td class="desc-cell">Monthly climate data (precipitation, VPD, PET, wind speed), composited for 2016–2018</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/IDAHO_EPSCOR_TERRACLIMATE">Link</a></td>
 </tr>
 <tr class="even">
-<td>Soil Texture</td>
-<td class="desc-cell">OpenLandMap Soil Texture Class (USDA System)</td>
-<td><a href="#">Link</a></td>
+<td>SRTM DEM</td>
+<td class="desc-cell">Elevation, slope, and aspect (decomposed into northness and eastness)</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003">Link</a></td>
 </tr>
 <tr class="odd">
-<td>Soil Type</td>
-<td class="desc-cell">OpenLandMap Clay Content</td>
-<td><a href="#">Link</a></td>
+<td>OpenLandMap Clay</td>
+<td class="desc-cell">Topsoil clay content (0cm depth), used as soil texture driver</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/OpenLandMap_SOL_SOL_CLAY-WFRACTION_USDA-3A1A1A_M_v02">Link</a></td>
 </tr>
 <tr class="even">
-<td rowspan="4" class="category-cell">Other</td>
-<td>Historical Landslides</td>
-<td class="desc-cell">Official reported landslide incident points (2011–2025)</td>
-<td><a href="#">Link</a></td>
-</tr>
-<tr class="odd">
-<td>Census Population</td>
-<td class="desc-cell">Official Population per District, 2021 Census</td>
-<td><a href="#">Link</a></td>
-</tr>
-<tr class="even">
-<td>Country Boundary</td>
-<td class="desc-cell">Official boundary layer</td>
-<td><a href="#">Link</a></td>
-</tr>
-<tr class="odd">
-<td>District Boundaries</td>
-<td class="desc-cell">Official boundaries of all districts</td>
-<td><a href="#">Link</a></td>
+<td>OpenLandMap Sand</td>
+<td class="desc-cell">Topsoil sand content (0cm depth), used as soil texture driver</td>
+<td><a href="https://developers.google.com/earth-engine/datasets/catalog/OpenLandMap_SOL_SOL_SAND-WFRACTION_USDA-3A1A1A_M_v02">Link</a></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="methodology" class="level2">
 <h2 class="anchored" data-anchor-id="methodology">Methodology</h2>
-<p>How are you using this data to address the problem?</p>
+<p>We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023, compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots and to train a <strong>Random Forest model</strong> with climate, terrain, and soil variables, so the app can show both current degradation patterns and areas of higher concern.</p>
 </section>
 <section id="interface" class="level2">
 <h2 class="anchored" data-anchor-id="interface">Interface</h2>
@@ -387,7 +376,161 @@ background-size: cover;
 </section>
 <section id="data-analysis" class="level2">
 <h2 class="anchored" data-anchor-id="data-analysis">Data Analysis</h2>
-<p>text</p>
+<section id="data-cleaning-and-hotspot-preparation" class="level3">
+<h3 class="anchored" data-anchor-id="data-cleaning-and-hotspot-preparation">Data Cleaning and Hotspot Preparation</h3>
+<p>This notebook cleaned the 10 km grid dataset, converted pixel-level change ratios into whole-grid degradation indicators, identified priority hotspot cells, and exported spatial outputs for later mapping and modelling.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>df_clean <span class="op">=</span> df[df[<span class="st">"changed_mean"</span>]<span class="op">.</span><span class="fu">notna</span>()]<span class="op">.</span><span class="fu">copy</span>()</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"degradation_mean"</span>] <span class="op">=</span> df_clean[<span class="st">"degradation_mean"</span>]<span class="op">.</span><span class="fu">fillna</span>(<span class="dv">0</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"recovery_mean"</span>] <span class="op">=</span> df_clean[<span class="st">"recovery_mean"</span>]<span class="op">.</span><span class="fu">fillna</span>(<span class="dv">0</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"degradation_share_allpx"</span>] <span class="op">=</span> (</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    df_clean[<span class="st">"changed_mean"</span>] <span class="op">*</span> df_clean[<span class="st">"degradation_mean"</span>]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"recovery_share_allpx"</span>] <span class="op">=</span> (</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    df_clean[<span class="st">"changed_mean"</span>] <span class="op">*</span> df_clean[<span class="st">"recovery_mean"</span>]</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"net_change_allpx"</span>] <span class="op">=</span> (</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    df_clean[<span class="st">"recovery_share_allpx"</span>] <span class="op">-</span> df_clean[<span class="st">"degradation_share_allpx"</span>]</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>deg_threshold <span class="op">=</span> df_clean[<span class="st">"degradation_share_allpx"</span>]<span class="op">.</span><span class="fu">quantile</span>(<span class="fl">0.95</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>net_threshold <span class="op">=</span> df_clean[<span class="st">"net_change_allpx"</span>]<span class="op">.</span><span class="fu">quantile</span>(<span class="fl">0.05</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="net-negative-hotspot-labels" class="level3">
+<h3 class="anchored" data-anchor-id="net-negative-hotspot-labels">Net-Negative Hotspot Labels</h3>
+<p>Positive labels were assigned only to highly degraded grid cells with negative net change, producing stricter and more credible modelling targets.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> pct <span class="op">=</span> grid<span class="op">.</span><span class="fu">reduceColumns</span>({</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">reducer</span><span class="op">:</span> ee<span class="op">.</span><span class="at">Reducer</span><span class="op">.</span><span class="fu">percentile</span>([<span class="dv">80</span><span class="op">,</span> <span class="dv">85</span><span class="op">,</span> <span class="dv">90</span>])<span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">selectors</span><span class="op">:</span> [<span class="st">'degradation_share_allpx'</span>]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> q80 <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(pct<span class="op">.</span><span class="fu">get</span>(<span class="st">'p80'</span>))<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> q85 <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(pct<span class="op">.</span><span class="fu">get</span>(<span class="st">'p85'</span>))<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> q90 <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(pct<span class="op">.</span><span class="fu">get</span>(<span class="st">'p90'</span>))<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> gridLabeledB <span class="op">=</span> grid<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> deg <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(<span class="st">'degradation_share_allpx'</span>))<span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> net <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(<span class="st">'net_change_allpx'</span>))<span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> isNetNeg <span class="op">=</span> net<span class="op">.</span><span class="fu">lt</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> f<span class="op">.</span><span class="fu">set</span>({</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y20_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q80)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()<span class="op">,</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y15_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q85)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()<span class="op">,</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y10_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q90)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="early-driver-extraction-for-rf" class="level3">
+<h3 class="anchored" data-anchor-id="early-driver-extraction-for-rf">Early Driver Extraction for RF</h3>
+<p>This script combined stricter net-negative labels with early-period climate, terrain and soil drivers, then aggregated all variables to the 10 km grid for Random Forest training.&nbsp;</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> gridLabeled <span class="op">=</span> grid<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> deg <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(<span class="st">'degradation_share_allpx'</span>))<span class="op">;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> net <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(<span class="st">'net_change_allpx'</span>))<span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> isNetNeg <span class="op">=</span> net<span class="op">.</span><span class="fu">lt</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> f<span class="op">.</span><span class="fu">set</span>({</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y20_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q80)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()<span class="op">,</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y15_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q85)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()<span class="op">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y10_netneg</span><span class="op">:</span> deg<span class="op">.</span><span class="fu">gte</span>(q90)<span class="op">.</span><span class="fu">and</span>(isNetNeg)<span class="op">.</span><span class="fu">int</span>()</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> tc <span class="op">=</span> ee<span class="op">.</span><span class="fu">ImageCollection</span>(<span class="st">'IDAHO_EPSCOR/TERRACLIMATE'</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">filterDate</span>(<span class="st">'2016-06-01'</span><span class="op">,</span> <span class="st">'2018-09-30'</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">filterBounds</span>(aoi)<span class="op">;</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> prec <span class="op">=</span> tc<span class="op">.</span><span class="fu">select</span>(<span class="st">'pr'</span>)<span class="op">.</span><span class="fu">mean</span>()<span class="op">.</span><span class="fu">clip</span>(aoi)<span class="op">.</span><span class="fu">rename</span>(<span class="st">'prec'</span>)<span class="op">;</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> vpd  <span class="op">=</span> tc<span class="op">.</span><span class="fu">select</span>(<span class="st">'vpd'</span>)<span class="op">.</span><span class="fu">mean</span>()<span class="op">.</span><span class="fu">multiply</span>(<span class="fl">0.01</span>)<span class="op">.</span><span class="fu">clip</span>(aoi)<span class="op">.</span><span class="fu">rename</span>(<span class="st">'vpd'</span>)<span class="op">;</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> pet  <span class="op">=</span> tc<span class="op">.</span><span class="fu">select</span>(<span class="st">'pet'</span>)<span class="op">.</span><span class="fu">mean</span>()<span class="op">.</span><span class="fu">multiply</span>(<span class="fl">0.1</span>)<span class="op">.</span><span class="fu">clip</span>(aoi)<span class="op">.</span><span class="fu">rename</span>(<span class="st">'pet'</span>)<span class="op">;</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> ws   <span class="op">=</span> tc<span class="op">.</span><span class="fu">select</span>(<span class="st">'vs'</span>)<span class="op">.</span><span class="fu">mean</span>()<span class="op">.</span><span class="fu">multiply</span>(<span class="fl">0.01</span>)<span class="op">.</span><span class="fu">clip</span>(aoi)<span class="op">.</span><span class="fu">rename</span>(<span class="st">'ws'</span>)<span class="op">;</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> dem <span class="op">=</span> ee<span class="op">.</span><span class="fu">Image</span>(<span class="st">'USGS/SRTMGL1_003'</span>)<span class="op">.</span><span class="fu">clip</span>(aoi)<span class="op">;</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> elev <span class="op">=</span> dem<span class="op">.</span><span class="fu">rename</span>(<span class="st">'elev'</span>)<span class="op">;</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> slope <span class="op">=</span> ee<span class="op">.</span><span class="at">Terrain</span><span class="op">.</span><span class="fu">slope</span>(dem)<span class="op">.</span><span class="fu">rename</span>(<span class="st">'slope'</span>)<span class="op">;</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> aspectRad <span class="op">=</span> ee<span class="op">.</span><span class="at">Terrain</span><span class="op">.</span><span class="fu">aspect</span>(dem)<span class="op">.</span><span class="fu">multiply</span>(<span class="bu">Math</span><span class="op">.</span><span class="cn">PI</span>)<span class="op">.</span><span class="fu">divide</span>(<span class="dv">180</span>)<span class="op">;</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> northness <span class="op">=</span> aspectRad<span class="op">.</span><span class="fu">cos</span>()<span class="op">.</span><span class="fu">rename</span>(<span class="st">'northness'</span>)<span class="op">;</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> eastness <span class="op">=</span> aspectRad<span class="op">.</span><span class="fu">sin</span>()<span class="op">.</span><span class="fu">rename</span>(<span class="st">'eastness'</span>)<span class="op">;</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> driverStack <span class="op">=</span> prec<span class="op">.</span><span class="fu">addBands</span>(vpd)<span class="op">.</span><span class="fu">addBands</span>(pet)<span class="op">.</span><span class="fu">addBands</span>(ws)</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">addBands</span>(elev)<span class="op">.</span><span class="fu">addBands</span>(slope)</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">addBands</span>(northness)<span class="op">.</span><span class="fu">addBands</span>(eastness)</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">addBands</span>(clay)<span class="op">.</span><span class="fu">addBands</span>(sand)<span class="op">;</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> gridFinal <span class="op">=</span> driverStack<span class="op">.</span><span class="fu">reduceRegions</span>({</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  <span class="dt">collection</span><span class="op">:</span> gridLabeled<span class="op">,</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  <span class="dt">reducer</span><span class="op">:</span> ee<span class="op">.</span><span class="at">Reducer</span><span class="op">.</span><span class="fu">mean</span>()<span class="op">,</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  <span class="dt">scale</span><span class="op">:</span> <span class="dv">500</span><span class="op">,</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  <span class="dt">crs</span><span class="op">:</span> <span class="st">'EPSG:4326'</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="random-forest-selection-and-prediction" class="level3">
+<h3 class="anchored" data-anchor-id="random-forest-selection-and-prediction">Random Forest Selection and Prediction</h3>
+<p>This script compared candidate labels, tuned Random Forest settings with 5-fold cross-validation, trained the final model, and exported grid-level degradation probabilities.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> MODE <span class="op">=</span> <span class="st">'FINAL'</span><span class="op">;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">makeSplit</span>(labelName) {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> pos <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(labelName<span class="op">,</span> <span class="dv">1</span>))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">randomColumn</span>(<span class="st">'rand_split'</span><span class="op">,</span> splitSeed)<span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> neg <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(labelName<span class="op">,</span> <span class="dv">0</span>))</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">randomColumn</span>(<span class="st">'rand_split'</span><span class="op">,</span> splitSeed)<span class="op">;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">trainSet</span><span class="op">:</span> pos<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">lt</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>))</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>                 <span class="op">.</span><span class="fu">merge</span>(neg<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">lt</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>)))<span class="op">,</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">testSet</span><span class="op">:</span> pos<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>))</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">merge</span>(neg<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>)))</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> finalClassifier <span class="op">=</span> ee<span class="op">.</span><span class="at">Classifier</span><span class="op">.</span><span class="fu">smileRandomForest</span>({</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">numberOfTrees</span><span class="op">:</span> bestNtree<span class="op">,</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">variablesPerSplit</span><span class="op">:</span> bestMtry<span class="op">,</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">minLeafPopulation</span><span class="op">:</span> bestLeaf</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>})<span class="op">.</span><span class="fu">train</span>({</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  <span class="dt">features</span><span class="op">:</span> split<span class="op">.</span><span class="at">trainSet</span><span class="op">,</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="dt">classProperty</span><span class="op">:</span> selectedLabel<span class="op">,</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>  <span class="dt">inputProperties</span><span class="op">:</span> inputBands</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> probClassifier <span class="op">=</span> finalClassifier<span class="op">.</span><span class="fu">setOutputMode</span>(<span class="st">'PROBABILITY'</span>)<span class="op">;</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> gridProb <span class="op">=</span> grid<span class="op">.</span><span class="fu">classify</span>(probClassifier)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="random-forest-tuning-and-threshold-selection" class="level3">
+<h3 class="anchored" data-anchor-id="random-forest-tuning-and-threshold-selection">Random Forest Tuning and Threshold Selection&nbsp;</h3>
+<p>This workflow compared candidate labels, tuned Random Forest hyperparameters and decision thresholds with 5-fold cross-validation, then generated final probability and hotspot maps.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">makeSplit</span>(labelName) {</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> pos <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(labelName<span class="op">,</span> <span class="dv">1</span>))</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">randomColumn</span>(<span class="st">'rand_split'</span><span class="op">,</span> splitSeed)<span class="op">;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> neg <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(labelName<span class="op">,</span> <span class="dv">0</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">randomColumn</span>(<span class="st">'rand_split'</span><span class="op">,</span> splitSeed)<span class="op">;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">trainSet</span><span class="op">:</span> pos<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">lt</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>))</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>                 <span class="op">.</span><span class="fu">merge</span>(neg<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">lt</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>)))<span class="op">,</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">testSet</span><span class="op">:</span> pos<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>))</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>                <span class="op">.</span><span class="fu">merge</span>(neg<span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(<span class="st">'rand_split'</span><span class="op">,</span> <span class="fl">0.70</span>)))</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> thresholds <span class="op">=</span> [<span class="fl">0.5</span><span class="op">,</span> <span class="fl">0.7</span><span class="op">,</span> <span class="fl">0.9</span>]<span class="op">;</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> clfProb <span class="op">=</span> ee<span class="op">.</span><span class="at">Classifier</span><span class="op">.</span><span class="fu">smileRandomForest</span>({</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">numberOfTrees</span><span class="op">:</span> ntree<span class="op">,</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">variablesPerSplit</span><span class="op">:</span> mtry<span class="op">,</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">minLeafPopulation</span><span class="op">:</span> leaf</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>})<span class="op">.</span><span class="fu">train</span>({</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>  <span class="dt">features</span><span class="op">:</span> cvTrain<span class="op">,</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  <span class="dt">classProperty</span><span class="op">:</span> selectedLabel<span class="op">,</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="dt">inputProperties</span><span class="op">:</span> inputBands</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>})<span class="op">.</span><span class="fu">setOutputMode</span>(<span class="st">'PROBABILITY'</span>)<span class="op">;</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> valWithProb <span class="op">=</span> cvVal<span class="op">.</span><span class="fu">classify</span>(clfProb)<span class="op">;</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> valWithPred <span class="op">=</span> valWithProb<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(feat) {</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> p <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(feat<span class="op">.</span><span class="fu">get</span>(<span class="st">'classification'</span>))<span class="op">;</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> feat<span class="op">.</span><span class="fu">set</span>(<span class="st">'pred_class'</span><span class="op">,</span> p<span class="op">.</span><span class="fu">gte</span>(t))<span class="op">;</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
 </section>
 <section id="interactive-visualization" class="level2">
 <h2 class="anchored" data-anchor-id="interactive-visualization">Interactive Visualization</h2>
@@ -397,24 +540,24 @@ background-size: cover;
 <section id="historical-change" class="level6">
 <h6 class="anchored" data-anchor-id="historical-change">Historical Change</h6>
 <p>A dropdown offers six layers covering observed degradation, recovery, net change, and land cover at two time periods. A side-by-side swipe compares land cover between 2016–2018 and 2021–2023.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Swipe comparison: two linked maps with a draggable divider</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> leftMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rightMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Linker keeps pan/zoom synchronised across both sides</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipeLinker <span class="op">=</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Linker</span>([leftMap<span class="op">,</span> rightMap])<span class="op">;</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">// SplitPanel with wipe:true provides the draggable divider</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipePanel <span class="op">=</span> ui<span class="op">.</span><span class="fu">SplitPanel</span>({</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">firstPanel</span><span class="op">:</span> leftMap<span class="op">,</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">secondPanel</span><span class="op">:</span> rightMap<span class="op">,</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">wipe</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> {<span class="dt">stretch</span><span class="op">:</span> <span class="st">'both'</span>}</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Populate left with 2016-18 composite, right with 2021-23</span></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>leftMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcEarly</span>())<span class="op">;</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>rightMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcRecent</span>())<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Swipe comparison: two linked maps with a draggable divider</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> leftMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rightMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Linker keeps pan/zoom synchronised across both sides</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipeLinker <span class="op">=</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Linker</span>([leftMap<span class="op">,</span> rightMap])<span class="op">;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co">// SplitPanel with wipe:true provides the draggable divider</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> swipePanel <span class="op">=</span> ui<span class="op">.</span><span class="fu">SplitPanel</span>({</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">firstPanel</span><span class="op">:</span> leftMap<span class="op">,</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">secondPanel</span><span class="op">:</span> rightMap<span class="op">,</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">wipe</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> {<span class="dt">stretch</span><span class="op">:</span> <span class="st">'both'</span>}</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Populate left with 2016-18 composite, right with 2021-23</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>leftMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcEarly</span>())<span class="op">;</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>rightMap<span class="op">.</span><span class="fu">layers</span>()<span class="op">.</span><span class="fu">add</span>(<span class="fu">layerLulcRecent</span>())<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="priority-areas" class="level6">
 <h6 class="anchored" data-anchor-id="priority-areas">Priority Areas</h6>
@@ -423,125 +566,125 @@ background-size: cover;
 <section id="susceptibility-map" class="level6">
 <h6 class="anchored" data-anchor-id="susceptibility-map">Susceptibility Map</h6>
 <p>The Random Forest model outputs a continuous probability (0–1), visualised on a 5-step color ramp. A threshold slider filters the map to cells above a chosen probability.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Server-side filter driven by a client-side slider</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">layerRFProbability</span>() {</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> filtered <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">,</span> STATE<span class="op">.</span><span class="at">rfThreshold</span>)</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> styled <span class="op">=</span> filtered<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(f) {</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">var</span> v <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span>))<span class="op">;</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f<span class="op">.</span><span class="fu">set</span>(<span class="st">'style'</span><span class="op">,</span> {</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">fillColor</span><span class="op">:</span> <span class="fu">paletteFill</span>(v<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> CONFIG<span class="op">.</span><span class="at">palRFProb</span>)<span class="op">,</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">width</span><span class="op">:</span> <span class="dv">0</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Layer</span>(styled<span class="op">.</span><span class="fu">style</span>({<span class="dt">styleProperty</span><span class="op">:</span> <span class="st">'style'</span>}))<span class="op">;</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Slider widget: each change re-renders the filtered layer</span></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rfThresholdSlider <span class="op">=</span> ui<span class="op">.</span><span class="fu">Slider</span>({</span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">min</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">max</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="fl">0.05</span><span class="op">,</span></span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">onChange</span><span class="op">:</span> <span class="kw">function</span>(v) {</span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    STATE<span class="op">.</span><span class="at">rfThreshold</span> <span class="op">=</span> v<span class="op">;</span></span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setActiveLayer</span>()<span class="op">;</span>  <span class="co">// re-runs the filter with new threshold</span></span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Server-side filter driven by a client-side slider</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">layerRFProbability</span>() {</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> filtered <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gte</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">,</span> STATE<span class="op">.</span><span class="at">rfThreshold</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> styled <span class="op">=</span> filtered<span class="op">.</span><span class="fu">map</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">var</span> v <span class="op">=</span> ee<span class="op">.</span><span class="fu">Number</span>(f<span class="op">.</span><span class="fu">get</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span>))<span class="op">;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f<span class="op">.</span><span class="fu">set</span>(<span class="st">'style'</span><span class="op">,</span> {</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">fillColor</span><span class="op">:</span> <span class="fu">paletteFill</span>(v<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> CONFIG<span class="op">.</span><span class="at">palRFProb</span>)<span class="op">,</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">width</span><span class="op">:</span> <span class="dv">0</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> ui<span class="op">.</span><span class="at">Map</span><span class="op">.</span><span class="fu">Layer</span>(styled<span class="op">.</span><span class="fu">style</span>({<span class="dt">styleProperty</span><span class="op">:</span> <span class="st">'style'</span>}))<span class="op">;</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Slider widget: each change re-renders the filtered layer</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rfThresholdSlider <span class="op">=</span> ui<span class="op">.</span><span class="fu">Slider</span>({</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">min</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">max</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="dv">0</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="fl">0.05</span><span class="op">,</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">onChange</span><span class="op">:</span> <span class="kw">function</span>(v) {</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    STATE<span class="op">.</span><span class="at">rfThreshold</span> <span class="op">=</span> v<span class="op">;</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setActiveLayer</span>()<span class="op">;</span>  <span class="co">// re-runs the filter with new threshold</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="grid-inspector" class="level3">
 <h3 class="anchored" data-anchor-id="grid-inspector">Grid Inspector</h3>
 <p>Works across all three view modes. Clicking any grid cell opens a side panel with its full data, linking map-level patterns with cell-level diagnostics.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Click anywhere on the map to inspect the underlying grid cell</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>mapPanel<span class="op">.</span><span class="fu">onClick</span>(<span class="kw">function</span>(coords) {</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> point <span class="op">=</span> ee<span class="op">.</span><span class="at">Geometry</span><span class="op">.</span><span class="fu">Point</span>([coords<span class="op">.</span><span class="at">lon</span><span class="op">,</span> coords<span class="op">.</span><span class="at">lat</span>])<span class="op">;</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> cell <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(point)<span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// evaluate() pulls the server-side Feature to the client asynchronously</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  cell<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(f) {</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>f) <span class="cf">return</span><span class="op">;</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">renderInspector</span>(f<span class="op">.</span><span class="at">properties</span>)<span class="op">;</span>  <span class="co">// show observed, modelled, drivers</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Click anywhere on the map to inspect the underlying grid cell</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>mapPanel<span class="op">.</span><span class="fu">onClick</span>(<span class="kw">function</span>(coords) {</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> point <span class="op">=</span> ee<span class="op">.</span><span class="at">Geometry</span><span class="op">.</span><span class="fu">Point</span>([coords<span class="op">.</span><span class="at">lon</span><span class="op">,</span> coords<span class="op">.</span><span class="at">lat</span>])<span class="op">;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> cell <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(point)<span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// evaluate() pulls the server-side Feature to the client asynchronously</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  cell<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(f) {</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>f) <span class="cf">return</span><span class="op">;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">renderInspector</span>(f<span class="op">.</span><span class="at">properties</span>)<span class="op">;</span>  <span class="co">// show observed, modelled, drivers</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="guided-examples" class="level3">
 <h3 class="anchored" data-anchor-id="guided-examples">Guided Examples</h3>
 <p>This section provides three one-click examples: an observed priority area, a high modelled probability cell, and a mixed or recovering cell that help users quickly learn how to interpret the provided data.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getExampleFeature</span>(kind) {</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> gridInMongolia <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(mongoliaBoundary<span class="op">.</span><span class="fu">geometry</span>())<span class="op">;</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(CONFIG<span class="op">.</span><span class="at">fieldPriority</span><span class="op">,</span> <span class="dv">1</span>))</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldDegShare</span><span class="op">,</span> <span class="kw">false</span>)</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">,</span> <span class="kw">false</span>)</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'recovery'</span>) {</span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gt</span>(CONFIG<span class="op">.</span><span class="at">fieldNetChange</span><span class="op">,</span> <span class="dv">0</span>))</span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gt</span>(CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">,</span> <span class="dv">0</span>))</span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">,</span> <span class="kw">false</span>)</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">goToExample</span>(kind) {</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> exampleName<span class="op">;</span></span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> targetView<span class="op">;</span></span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> targetLayer<span class="op">;</span></span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
-<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'Observed priority area'</span><span class="op">;</span></span>
-<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'B'</span><span class="op">;</span></span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'net'</span><span class="op">;</span></span>
-<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
-<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'High modelled probability'</span><span class="op">;</span></span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'D'</span><span class="op">;</span></span>
-<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'net'</span><span class="op">;</span></span>
-<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
-<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'Mixed / recovering cell'</span><span class="op">;</span></span>
-<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'A'</span><span class="op">;</span></span>
-<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'rec'</span><span class="op">;</span></span>
-<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> exampleFeature <span class="op">=</span> ee<span class="op">.</span><span class="fu">Feature</span>(<span class="fu">getExampleFeature</span>(kind))<span class="op">;</span></span>
-<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> centroid <span class="op">=</span> exampleFeature<span class="op">.</span><span class="fu">geometry</span>()<span class="op">.</span><span class="fu">centroid</span>(<span class="dv">1</span>)<span class="op">;</span></span>
-<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> coords <span class="op">=</span> centroid<span class="op">.</span><span class="fu">coordinates</span>()<span class="op">;</span></span>
-<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>  exampleFeature<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(featureResult) {</span>
-<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>    coords<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(coordResult) {</span>
-<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>      <span class="kw">var</span> lon <span class="op">=</span> coordResult[<span class="dv">0</span>]<span class="op">;</span></span>
-<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>      <span class="kw">var</span> lat <span class="op">=</span> coordResult[<span class="dv">1</span>]<span class="op">;</span></span>
-<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">viewMode</span> <span class="op">=</span> targetView<span class="op">;</span></span>
-<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">activeSubLayer</span> <span class="op">=</span> targetLayer<span class="op">;</span></span>
-<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleFeature</span> <span class="op">=</span> exampleFeature<span class="op">;</span></span>
-<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleName</span> <span class="op">=</span> exampleName<span class="op">;</span></span>
-<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleKind</span> <span class="op">=</span> kind<span class="op">;</span></span>
-<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
-<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldDegShare</span><span class="op">;</span></span>
-<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
-<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">;</span></span>
-<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> {</span>
-<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">;</span></span>
-<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a>      }</span>
-<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a>      <span class="fu">setAppLayout</span>()<span class="op">;</span></span>
-<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>      <span class="fu">setActiveLayer</span>()<span class="op">;</span></span>
-<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>      mapPanel<span class="op">.</span><span class="fu">setCenter</span>(lon<span class="op">,</span> lat<span class="op">,</span> <span class="dv">9</span>)<span class="op">;</span></span>
-<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>      <span class="fu">renderInspector</span>(featureResult<span class="op">.</span><span class="at">properties</span><span class="op">,</span> <span class="kw">null</span>)<span class="op">;</span></span>
-<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>      <span class="fu">renderExampleCallout</span>(kind<span class="op">,</span> featureResult<span class="op">.</span><span class="at">properties</span>)<span class="op">;</span></span>
-<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
-<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
-<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getExampleFeature</span>(kind) {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> gridInMongolia <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(mongoliaBoundary<span class="op">.</span><span class="fu">geometry</span>())<span class="op">;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(CONFIG<span class="op">.</span><span class="at">fieldPriority</span><span class="op">,</span> <span class="dv">1</span>))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldDegShare</span><span class="op">,</span> <span class="kw">false</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">,</span> <span class="kw">false</span>)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'recovery'</span>) {</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gridInMongolia</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gt</span>(CONFIG<span class="op">.</span><span class="at">fieldNetChange</span><span class="op">,</span> <span class="dv">0</span>))</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">gt</span>(CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">,</span> <span class="dv">0</span>))</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">sort</span>(CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">,</span> <span class="kw">false</span>)</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">first</span>()<span class="op">;</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">goToExample</span>(kind) {</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> exampleName<span class="op">;</span></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> targetView<span class="op">;</span></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> targetLayer<span class="op">;</span></span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'Observed priority area'</span><span class="op">;</span></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'B'</span><span class="op">;</span></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'net'</span><span class="op">;</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'High modelled probability'</span><span class="op">;</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'D'</span><span class="op">;</span></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'net'</span><span class="op">;</span></span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a>    exampleName <span class="op">=</span> <span class="st">'Mixed / recovering cell'</span><span class="op">;</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a>    targetView <span class="op">=</span> <span class="st">'A'</span><span class="op">;</span></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a>    targetLayer <span class="op">=</span> <span class="st">'rec'</span><span class="op">;</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> exampleFeature <span class="op">=</span> ee<span class="op">.</span><span class="fu">Feature</span>(<span class="fu">getExampleFeature</span>(kind))<span class="op">;</span></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> centroid <span class="op">=</span> exampleFeature<span class="op">.</span><span class="fu">geometry</span>()<span class="op">.</span><span class="fu">centroid</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> coords <span class="op">=</span> centroid<span class="op">.</span><span class="fu">coordinates</span>()<span class="op">;</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>  exampleFeature<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(featureResult) {</span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>    coords<span class="op">.</span><span class="fu">evaluate</span>(<span class="kw">function</span>(coordResult) {</span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a>      <span class="kw">var</span> lon <span class="op">=</span> coordResult[<span class="dv">0</span>]<span class="op">;</span></span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a>      <span class="kw">var</span> lat <span class="op">=</span> coordResult[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">viewMode</span> <span class="op">=</span> targetView<span class="op">;</span></span>
+<span id="cb12-55"><a href="#cb12-55" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">activeSubLayer</span> <span class="op">=</span> targetLayer<span class="op">;</span></span>
+<span id="cb12-56"><a href="#cb12-56" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleFeature</span> <span class="op">=</span> exampleFeature<span class="op">;</span></span>
+<span id="cb12-57"><a href="#cb12-57" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleName</span> <span class="op">=</span> exampleName<span class="op">;</span></span>
+<span id="cb12-58"><a href="#cb12-58" aria-hidden="true" tabindex="-1"></a>      STATE<span class="op">.</span><span class="at">exampleKind</span> <span class="op">=</span> kind<span class="op">;</span></span>
+<span id="cb12-59"><a href="#cb12-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-60"><a href="#cb12-60" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'priority'</span>) {</span>
+<span id="cb12-61"><a href="#cb12-61" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldDegShare</span><span class="op">;</span></span>
+<span id="cb12-62"><a href="#cb12-62" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (kind <span class="op">===</span> <span class="st">'model'</span>) {</span>
+<span id="cb12-63"><a href="#cb12-63" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldRFProb</span><span class="op">;</span></span>
+<span id="cb12-64"><a href="#cb12-64" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> {</span>
+<span id="cb12-65"><a href="#cb12-65" aria-hidden="true" tabindex="-1"></a>        STATE<span class="op">.</span><span class="at">highlightMetric</span> <span class="op">=</span> CONFIG<span class="op">.</span><span class="at">fieldRecShare</span><span class="op">;</span></span>
+<span id="cb12-66"><a href="#cb12-66" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb12-67"><a href="#cb12-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-68"><a href="#cb12-68" aria-hidden="true" tabindex="-1"></a>      <span class="fu">setAppLayout</span>()<span class="op">;</span></span>
+<span id="cb12-69"><a href="#cb12-69" aria-hidden="true" tabindex="-1"></a>      <span class="fu">setActiveLayer</span>()<span class="op">;</span></span>
+<span id="cb12-70"><a href="#cb12-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-71"><a href="#cb12-71" aria-hidden="true" tabindex="-1"></a>      mapPanel<span class="op">.</span><span class="fu">setCenter</span>(lon<span class="op">,</span> lat<span class="op">,</span> <span class="dv">9</span>)<span class="op">;</span></span>
+<span id="cb12-72"><a href="#cb12-72" aria-hidden="true" tabindex="-1"></a>      <span class="fu">renderInspector</span>(featureResult<span class="op">.</span><span class="at">properties</span><span class="op">,</span> <span class="kw">null</span>)<span class="op">;</span></span>
+<span id="cb12-73"><a href="#cb12-73" aria-hidden="true" tabindex="-1"></a>      <span class="fu">renderExampleCallout</span>(kind<span class="op">,</span> featureResult<span class="op">.</span><span class="at">properties</span>)<span class="op">;</span></span>
+<span id="cb12-74"><a href="#cb12-74" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb12-75"><a href="#cb12-75" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb12-76"><a href="#cb12-76" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="insights-and-objectives" class="level2">
