@@ -294,7 +294,7 @@ background-size: cover;
 <h2 class="anchored" data-anchor-id="data-pro-precessing">Data Pro-precessing</h2>
 <section id="defining-the-study-area" class="level3">
 <h3 class="anchored" data-anchor-id="defining-the-study-area">Defining the Study Area</h3>
-<p>A full-country Dynamic World composite was first visualised to identify where forest, grassland, and bare land co-occur. The AOI [95°E, 45°N, 115°E, 48°N] was selected to capture the grassland-desert ecotone in central-southern Mongolia.</p>
+<p>A full-country Dynamic World composite was first visualised to identify where forest, grassland, and bare land co-occur. The AOI <strong>[95°E, 45°N, 115°E, 48°N]</strong> was selected to capture the grassland-desert ecotone in central-southern Mongolia.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Load full Mongolia boundary for exploration</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> mongolia <span class="op">=</span> ee<span class="op">.</span><span class="fu">FeatureCollection</span>(<span class="st">"FAO/GAUL/2015/level0"</span>)  </span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">filter</span>(ee<span class="op">.</span><span class="at">Filter</span><span class="op">.</span><span class="fu">eq</span>(<span class="st">'ADM0_NAME'</span><span class="op">,</span> <span class="st">'Mongolia'</span>))<span class="op">;</span></span>
@@ -334,8 +334,8 @@ background-size: cover;
 <h3 class="anchored" data-anchor-id="change-detection-grid-aggregation">Change Detection &amp; Grid Aggregation</h3>
 <ul>
 <li><p>Transitions encoded as from × 10 + to (e.g.&nbsp;grass→bare = 27, trees→bare = 17)</p></li>
-<li><p>Degradation: grass/trees/shrub → bare</p></li>
-<li><p>Recovery: bare → grass/trees/shrub</p></li>
+<li><p><strong>Degradation</strong>: grass/trees/shrub → bare</p></li>
+<li><p><strong>Recovery</strong>: bare → grass/trees/shrub</p></li>
 </ul>
 <p>A net change value per 10km grid cell was computed as recovery_mean − degradation_mean, with negative values indicating net degradation</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Encode transitions</span></span>
@@ -378,7 +378,7 @@ background-size: cover;
 <h2 class="anchored" data-anchor-id="data-analysis">Data Analysis</h2>
 <section id="data-cleaning-and-hotspot-preparation" class="level3">
 <h3 class="anchored" data-anchor-id="data-cleaning-and-hotspot-preparation">Data Cleaning and Hotspot Preparation</h3>
-<p>This notebook cleaned the 10 km grid dataset, converted pixel-level change ratios into whole-grid degradation indicators, identified priority hotspot cells, and exported spatial outputs for later mapping and modelling.</p>
+<p>This notebook cleaned the 10 km grid dataset, converted pixel-level change ratios into <strong>whole-grid degradation indicators</strong>, identified <strong>priority hotspot cells</strong>, and exported spatial outputs for later mapping and modelling.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>df_clean <span class="op">=</span> df[df[<span class="st">"changed_mean"</span>]<span class="op">.</span><span class="fu">notna</span>()]<span class="op">.</span><span class="fu">copy</span>()</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"degradation_mean"</span>] <span class="op">=</span> df_clean[<span class="st">"degradation_mean"</span>]<span class="op">.</span><span class="fu">fillna</span>(<span class="dv">0</span>)</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>df_clean[<span class="st">"recovery_mean"</span>] <span class="op">=</span> df_clean[<span class="st">"recovery_mean"</span>]<span class="op">.</span><span class="fu">fillna</span>(<span class="dv">0</span>)</span>
@@ -398,7 +398,7 @@ background-size: cover;
 </section>
 <section id="net-negative-hotspot-labels" class="level3">
 <h3 class="anchored" data-anchor-id="net-negative-hotspot-labels">Net-Negative Hotspot Labels</h3>
-<p>Positive labels were assigned only to highly degraded grid cells with negative net change, producing stricter and more credible modelling targets.</p>
+<p>Positive labels were assigned only to highly degraded grid cells with <strong>negative net change</strong>, producing stricter and more credible modelling targets.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> pct <span class="op">=</span> grid<span class="op">.</span><span class="fu">reduceColumns</span>({</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">reducer</span><span class="op">:</span> ee<span class="op">.</span><span class="at">Reducer</span><span class="op">.</span><span class="fu">percentile</span>([<span class="dv">80</span><span class="op">,</span> <span class="dv">85</span><span class="op">,</span> <span class="dv">90</span>])<span class="op">,</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">selectors</span><span class="op">:</span> [<span class="st">'degradation_share_allpx'</span>]</span>
@@ -539,7 +539,7 @@ background-size: cover;
 <p>At launch, the application offers three view modes: Historical Change, Priority Areas, and Susceptibility Map.</p>
 <section id="historical-change" class="level6">
 <h6 class="anchored" data-anchor-id="historical-change">Historical Change</h6>
-<p>A dropdown offers six layers covering observed degradation, recovery, net change, and land cover at two time periods. A side-by-side swipe compares land cover between 2016–2018 and 2021–2023.</p>
+<p>A dropdown offers six layers covering observed degradation, recovery, net change, and land cover at two time periods. A <strong>side-by-side swipe</strong> compares land cover between 2016–2018 and 2021–2023.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Swipe comparison: two linked maps with a draggable divider</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> leftMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> rightMap <span class="op">=</span> ui<span class="op">.</span><span class="fu">Map</span>()<span class="op">;</span></span>
@@ -561,11 +561,11 @@ background-size: cover;
 </section>
 <section id="priority-areas" class="level6">
 <h6 class="anchored" data-anchor-id="priority-areas">Priority Areas</h6>
-<p>Grid cells in the top 15% by degradation share and with negative net change are flagged for monitoring.</p>
+<p>Grid cells in the <strong>top 15%</strong> by degradation share and with negative net change are flagged for monitoring.</p>
 </section>
 <section id="susceptibility-map" class="level6">
 <h6 class="anchored" data-anchor-id="susceptibility-map">Susceptibility Map</h6>
-<p>The Random Forest model outputs a continuous probability (0–1), visualised on a 5-step color ramp. A threshold slider filters the map to cells above a chosen probability.</p>
+<p>The Random Forest model outputs a continuous probability (0–1), visualised on a 5-step color ramp. A <strong>threshold slider</strong> filters the map to cells above a chosen probability.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Server-side filter driven by a client-side slider</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">layerRFProbability</span>() {</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> filtered <span class="op">=</span> grid<span class="op">.</span><span class="fu">filter</span>(</span>
@@ -608,7 +608,7 @@ background-size: cover;
 </section>
 <section id="guided-examples" class="level3">
 <h3 class="anchored" data-anchor-id="guided-examples">Guided Examples</h3>
-<p>This section provides three one-click examples: an observed priority area, a high modelled probability cell, and a mixed or recovering cell that help users quickly learn how to interpret the provided data.</p>
+<p>This section provides three one-click examples: <strong>an observed priority area, a high modelled probability cell, and a mixed or recovering cell</strong> that help users quickly learn how to interpret the provided data.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode javascript code-with-copy"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getExampleFeature</span>(kind) {</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> gridInMongolia <span class="op">=</span> grid<span class="op">.</span><span class="fu">filterBounds</span>(mongoliaBoundary<span class="op">.</span><span class="fu">geometry</span>())<span class="op">;</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
