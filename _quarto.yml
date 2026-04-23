@@ -30,7 +30,7 @@ format:
     toc-title: ""
     toc-depth: 3
     toc-location: right
-    fontsize: 16px
+    fontsize: 17px
     mainfont: "Source Sans 3"
     monofont: "JetBrains Mono"
     include-after-body:

@@ -7,7 +7,7 @@ $sand-200: #d4c5a9;  // light sand divider
 $sand-400: #a68b5b;  // camel
 $sand-600: #8b6f47;  // sand brown
 $sand-800: #6b4f2a;  // dark brown
-$sand-900: #3d2f22;  // deepest brown (body text)
+$sand-900: #1e140a;  // deepest brown (body text)
 
 $steppe-400: #6b7a3f;  // steppe green
 $steppe-600: #4a5530;  // dark steppe green
@@ -134,6 +134,8 @@ h3 {
 // Body
 body {
   line-height: 1.7;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
 }
 
 p {
