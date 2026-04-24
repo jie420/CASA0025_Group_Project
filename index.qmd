@@ -10,7 +10,7 @@ This application investigates land degradation dynamics in Mongolia's forest-gra
 
 ## Problem Statement
 
-This application addresses the problem that land degradation in Mongolia’s forest–grassland–desert transition zone is spatially uneven, but it is often difficult to identify which areas already show strong degradation signals and which areas may become more vulnerable. Change maps alone can show that land cover has changed, but they do not clearly support priority-setting. Our app aims to help users detect degradation hotspots, compare conditions across 10 km grid cells, and identify areas that may need earlier monitoring or intervention.
+This application addresses the problem that land degradation in Mongolia’s forest–grassland–desert transition zone is spatially uneven (Meng et al. 2021), but it is often difficult to identify which areas already show strong degradation signals and which areas may become more vulnerable. Change maps alone can show that land cover has changed, but they do not clearly support priority-setting. Our app aims to help users detect degradation hotspots, compare conditions across 10 km grid cells, and identify areas that may need earlier monitoring or intervention.
 
 ## End User
 
@@ -71,7 +71,7 @@ This project is designed for organizations involved in land degradation monitori
 
 ## Methodology
 
-We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023, compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots. Following the driver framework of Meng et al. (2021), climate, terrain, and soil variables are extracted and overlaid onto the same grid to train a Random Forest model, so the app can show both current degradation patterns and areas of higher concern.
+We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023 (Lamchin, M. et al. 2016), compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots. Following the driver framework of Meng et al. (2021), climate, terrain, and soil variables are extracted and overlaid onto the same grid to train a Random Forest model (Yulianto, F. et al. 2023), so the app can show both current degradation patterns and areas of higher concern.
 
 ![Random Forest Training and Evaluation Workflow](images/methodlogy.jpg)
 
@@ -608,3 +608,11 @@ The app supports NGOs and environmental monitoring organisations working on land
 <!-- -->
 
 -   Zhang, Y., Wang, J., Wang, Y., Ochir, A., & Togtokh, C. (2022). Land Cover Change Analysis to Assess Sustainability of Development in the Mongolian Plateau over 30 Years. Sustainability, 14(10), 6129. https://doi.org/10.3390/su14106129
+
+<!-- -->
+
+-   Lamchin, M. et al. (2016). Assessment of land cover change and desertification using remote sensing technology in a local region of Mongolia. https://doi.org/10.1016/j.asr.2015.10.006.
+
+<!-- -->
+
+-   Yulianto, Fajar & Raharjo, Puguh & Pramono, Irfan & Setiawan, Muhammad & Chulafak, Galdita & Nugroho, Gatot & Sakti, Anjar & Nugroho, Sapto & Budhiman, Syarif. (2023). Prediction and mapping of land degradation in the Batanghari watershed, Sumatra, Indonesia: utilizing multi-source geospatial data and machine learning modeling techniques. Modeling Earth Systems and Environment. 9. 10.1007/s40808-023-01761-y.
