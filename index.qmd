@@ -114,9 +114,9 @@ var aoi = ee.Geometry.Rectangle([95, 45, 115, 48]);
 
 ### Land Cover Compositing
 
--   Two 3-year mode composites: **2016–2018** (early) and **2021–2023** (recent)
--   **Growing season** only (Jun–Sep) to reduce cloud and snow contamination
--   mode() selects the most frequent land cover class per pixel
+-   Two 3-year mode composites: **2016–2018** (early) and **2021–2023** (recent).
+-   **Growing season** only (Jun–Sep) to reduce cloud and snow contamination.
+-   mode() selects the most frequent land cover class per pixel.
 
 ``` javascript
 var dwEarly = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
@@ -143,13 +143,13 @@ print('Class distribution 2016-2018:',
 
 ### Change Detection & Grid Aggregation
 
--   Transitions encoded as from × 10 + to (e.g. grass→bare = 27, trees→bare = 17)
+-   Transitions encoded as from × 10 + to (e.g. grass→bare = 27, trees→bare = 17).
 
--   **Degradation**: grass/trees/shrub → bare
+-   **Degradation**: grass/trees/shrub → bare.
 
--   **Recovery**: bare → grass/trees/shrub
+-   **Recovery**: bare → grass/trees/shrub.
 
-A net change value per 10km grid cell was computed as recovery_mean − degradation_mean, with negative values indicating net degradation
+A net change value per 10km grid cell was computed as recovery_mean − degradation_mean, with negative values indicating net degradation.
 
 ``` javascript
 // Encode transitions
@@ -585,33 +585,25 @@ The app supports NGOs and environmental monitoring organisations working on land
 
 ## Limitations
 
--   **Data Quality**: Dynamic World V1 relies on Sentinel-2 imagery, which is susceptible to cloud contamination. Although growing-season compositing reduces noise, classification errors may persist in areas with persistent cloud cover.
+-   **Data Quality**: Dynamic World V1 relies on Sentinel-2 imagery, which is vulnerable to cloud contamination. Growing-season compositing reduces noise but classification errors may persist.
 
 <!-- -->
 
--   **Subjectivity of AOI Definition**: The transition zone boundary was defined through visual inspection of land cover distribution rather than established ecological classifications, introducing subjectivity in the study area delineation.
+-   **Coarse Spatial Resolution**: Aggregating pixel-level change to 10 km grid cells may obscure localised degradation hotspots, limiting the precision available for fine-grained intervention planning.
 
 <!-- -->
 
--   **Loss of Spatial Detail at 10km Grid**: Aggregating pixel-level change data to 10km grid cells may obscure localised degradation hotspots, reducing the precision available for targeted intervention planning.
-
-<!-- -->
-
--   **Static Driver Assumption**: The RF model uses environmental conditions from the early period only, rather than incorporating how those conditions changed between periods. This means the model captures where degradation is likely based on existing conditions, but may miss cases where a sudden shift triggered localised degradation.
+-   **Missing Human Pressure**: The model omits key socio-ecological drivers such as livestock density and grazing intensity, so it reflects environmental background conditions rather than the full picture of Mongolian rangeland degradation.
 
 # References
 
--   Hengl, T., Mendes de Jesus, J., Heuvelink, G.B., Ruiperez Gonzalez, M., Kilibarda, M., Blagotić, A., Shangguan, W., Wright, M.N., Geng, X., Bauer-Marschallinger, B. and Guevara, M.A., 2017. SoilGrids250m: Global gridded soil information based on machine learning. PLoS one, 12(2), p.e0169748.
+-   Zhang, Y., Wang, J., Wang, Y., Ochir, A., & Togtokh, C. (2022). Land Cover Change Analysis to Assess Sustainability of Development in the Mongolian Plateau over 30 Years. Sustainability, 14(10), 6129. https://doi.org/10.3390/su14106129
 
 -   Meng, X., Gao, X., Li, S., Li, S. and Lei, J., 2021. Monitoring desertification in Mongolia based on Landsat images and Google Earth Engine from 1990 to 2020. Ecological indicators, 129, p.107908.
 
-<!-- -->
-
--   Zhang, Y., Wang, J., Wang, Y., Ochir, A., & Togtokh, C. (2022). Land Cover Change Analysis to Assess Sustainability of Development in the Mongolian Plateau over 30 Years. Sustainability, 14(10), 6129. https://doi.org/10.3390/su14106129
-
-<!-- -->
-
 -   Lamchin, M. et al. (2016). Assessment of land cover change and desertification using remote sensing technology in a local region of Mongolia. https://doi.org/10.1016/j.asr.2015.10.006.
+
+-   Hengl, T., Mendes de Jesus, J., Heuvelink, G.B., Ruiperez Gonzalez, M., Kilibarda, M., Blagotić, A., Shangguan, W., Wright, M.N., Geng, X., Bauer-Marschallinger, B. and Guevara, M.A., 2017. SoilGrids250m: Global gridded soil information based on machine learning. PLoS one, 12(2), p.e0169748.
 
 <!-- -->
 
