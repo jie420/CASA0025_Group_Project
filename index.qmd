@@ -71,7 +71,9 @@ This project is designed for organizations involved in land degradation monitori
 
 ## Methodology
 
-We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023, compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots and to train a **Random Forest model** with climate, terrain, and soil variables, so the app can show both current degradation patterns and areas of higher concern.
+We first use Dynamic World to identify Mongolia’s forest–grassland–desert transition zone and select a central-southern AOI. We then create land-cover composites for 2016–2018 and 2021–2023, compare them to detect changed pixels, and classify key transitions into degradation and recovery. These pixel-level results are aggregated into 10 km grid cells, where we calculate change, degradation, recovery, and net change indicators. The grid dataset is then used to identify observed hotspots. Following the driver framework of Meng et al. (2021), climate, terrain, and soil variables are extracted and overlaid onto the same grid to train a Random Forest model, so the app can show both current degradation patterns and areas of higher concern.
+
+![Random Forest Training and Evaluation Workflow](images/methodlogy.jpg)
 
 ## Interface
 
@@ -193,10 +195,14 @@ var gridStats = stackedImage.reduceRegions({
 This notebook cleaned the 10 km grid dataset, converted pixel-level change ratios into **whole-grid degradation indicators**, identified **priority hotspot cells**, and exported spatial outputs for later mapping and modelling.
 
 ``` javascript
+# Keep only valid grid cells with observed change
 df_clean = df[df["changed_mean"].notna()].copy()
+
+# Fill missing degradation and recovery values with zero
 df_clean["degradation_mean"] = df_clean["degradation_mean"].fillna(0)
 df_clean["recovery_mean"] = df_clean["recovery_mean"].fillna(0)
 
+# Build whole-grid degradation, recovery and net-change indicators
 df_clean["degradation_share_allpx"] = (
     df_clean["changed_mean"] * df_clean["degradation_mean"]
 )
@@ -207,24 +213,30 @@ df_clean["net_change_allpx"] = (
     df_clean["recovery_share_allpx"] - df_clean["degradation_share_allpx"]
 )
 
+# Define hotspot thresholds from the distribution of grid-level values
 deg_threshold = df_clean["degradation_share_allpx"].quantile(0.95)
 net_threshold = df_clean["net_change_allpx"].quantile(0.05)
 ```
 
 ### Net-Negative Hotspot Labels
 
-Positive labels were assigned only to highly degraded grid cells with **negative net change**, producing stricter and more credible modelling targets.
+Net-negative hotspot labels were derived from the original grid metrics by combining degradation percentiles with a **negative net-change** condition.
 
 ``` javascript
+// Calculate degradation thresholds from all grid cells
 var pct = grid.reduceColumns({
   reducer: ee.Reducer.percentile([80, 85, 90]),
   selectors: ['degradation_share_allpx']
 });
 
+// Define percentile cut-offs for top 20%, 15%, and 10%
 var q80 = ee.Number(pct.get('p80'));
 var q85 = ee.Number(pct.get('p85'));
 var q90 = ee.Number(pct.get('p90'));
 
+// Assign stricter binary labels:
+// a cell is positive only if degradation is high
+// and overall net change is negative
 var gridLabeledB = grid.map(function(f) {
   var deg = ee.Number(f.get('degradation_share_allpx'));
   var net = ee.Number(f.get('net_change_allpx'));
@@ -243,6 +255,7 @@ var gridLabeledB = grid.map(function(f) {
 This script combined stricter net-negative labels with early-period climate, terrain and soil drivers, then aggregated all variables to the 10 km grid for Random Forest training. 
 
 ``` javascript
+// Label each grid cell
 var gridLabeled = grid.map(function(f) {
   var deg = ee.Number(f.get('degradation_share_allpx'));
   var net = ee.Number(f.get('net_change_allpx'));
@@ -254,7 +267,7 @@ var gridLabeled = grid.map(function(f) {
     y10_netneg: deg.gte(q90).and(isNetNeg).int()
   });
 });
-
+// Climate
 var tc = ee.ImageCollection('IDAHO_EPSCOR/TERRACLIMATE')
   .filterDate('2016-06-01', '2018-09-30')
   .filterBounds(aoi);
@@ -264,12 +277,24 @@ var vpd  = tc.select('vpd').mean().multiply(0.01).clip(aoi).rename('vpd');
 var pet  = tc.select('pet').mean().multiply(0.1).clip(aoi).rename('pet');
 var ws   = tc.select('vs').mean().multiply(0.01).clip(aoi).rename('ws');
 
+// Terrain: SRTM DEM + derivatives
 var dem = ee.Image('USGS/SRTMGL1_003').clip(aoi);
 var elev = dem.rename('elev');
 var slope = ee.Terrain.slope(dem).rename('slope');
 var aspectRad = ee.Terrain.aspect(dem).multiply(Math.PI).divide(180);
 var northness = aspectRad.cos().rename('northness');
 var eastness = aspectRad.sin().rename('eastness');
+
+// Soil: OpenLandMap surface layer 
+var clay = ee.Image('OpenLandMap/SOL/SOL_CLAY-WFRACTION_USDA-3A1A1A_M/v02')
+  .select('b0')
+  .clip(aoi)
+  .rename('clay');
+
+var sand = ee.Image('OpenLandMap/SOL/SOL_SAND-WFRACTION_USDA-3A1A1A_M/v02')
+  .select('b0')
+  .clip(aoi)
+  .rename('sand');
 
 var driverStack = prec.addBands(vpd).addBands(pet).addBands(ws)
   .addBands(elev).addBands(slope)
@@ -286,25 +311,41 @@ var gridFinal = driverStack.reduceRegions({
 
 ### Random Forest Selection and Prediction
 
-This script compared candidate labels, tuned Random Forest settings with 5-fold cross-validation, trained the final model, and exported grid-level degradation probabilities.
+A Random Forest model was used to estimate degradation risk for each 10 km grid cell. The model was first tested and tuned using cross-validation, then checked on a separate test set before being applied across Mongolia.
 
 ``` javascript
-var MODE = 'FINAL';
+// RF WORKFLOW FOR GEE (SINGLE VERSION)
+// Input: 10km grid with degradation labels and driver variables
+var grid = table;
 
+// Driver variables grouped by category
+var climateBands = ['prec', 'vpd', 'pet', 'ws'];
+var terrainBands = ['elev', 'slope', 'northness', 'eastness'];
+var soilBands    = ['clay', 'sand'];
+var inputBands   = climateBands.concat(terrainBands).concat(soilBands);
+
+// Fixed seed for reproducibility
+var splitSeed = 42;
+
+// Best label and hyperparameters selected via 5-fold cross-validation in full workflow
+var selectedLabel = 'y15_netneg';  // top 15% degradation + net negative change
+var bestNtree     = 200;
+var bestMtry      = 5;
+var bestLeaf      = 10;
+
+// Split grid into 70% training and 30% test by positive/negative class
 function makeSplit(labelName) {
-  var pos = grid.filter(ee.Filter.eq(labelName, 1))
-                .randomColumn('rand_split', splitSeed);
-  var neg = grid.filter(ee.Filter.eq(labelName, 0))
-                .randomColumn('rand_split', splitSeed);
-
+  var pos = grid.filter(ee.Filter.eq(labelName, 1)).randomColumn('rand_split', splitSeed);
+  var neg = grid.filter(ee.Filter.eq(labelName, 0)).randomColumn('rand_split', splitSeed);
   return {
-    trainSet: pos.filter(ee.Filter.lt('rand_split', 0.70))
-                 .merge(neg.filter(ee.Filter.lt('rand_split', 0.70))),
-    testSet: pos.filter(ee.Filter.gte('rand_split', 0.70))
-                .merge(neg.filter(ee.Filter.gte('rand_split', 0.70)))
+    trainSet: pos.filter(ee.Filter.lt('rand_split', 0.70)).merge(neg.filter(ee.Filter.lt('rand_split', 0.70))),
+    testSet:  pos.filter(ee.Filter.gte('rand_split', 0.70)).merge(neg.filter(ee.Filter.gte('rand_split', 0.70)))
   };
 }
 
+var split = makeSplit(selectedLabel);
+
+// Train final model on full training set using best hyperparameters
 var finalClassifier = ee.Classifier.smileRandomForest({
   numberOfTrees: bestNtree,
   variablesPerSplit: bestMtry,
@@ -315,47 +356,27 @@ var finalClassifier = ee.Classifier.smileRandomForest({
   inputProperties: inputBands
 });
 
+// Switch to probability output mode for risk mapping
 var probClassifier = finalClassifier.setOutputMode('PROBABILITY');
 var gridProb = grid.classify(probClassifier);
-```
 
-### Random Forest Tuning and Threshold Selection 
+Map.centerObject(grid, 6);
 
-This workflow compared candidate labels, tuned Random Forest hyperparameters and decision thresholds with 5-fold cross-validation, then generated final probability and hotspot maps.
-
-``` javascript
-function makeSplit(labelName) {
-  var pos = grid.filter(ee.Filter.eq(labelName, 1))
-                .randomColumn('rand_split', splitSeed);
-  var neg = grid.filter(ee.Filter.eq(labelName, 0))
-                .randomColumn('rand_split', splitSeed);
-
-  return {
-    trainSet: pos.filter(ee.Filter.lt('rand_split', 0.70))
-                 .merge(neg.filter(ee.Filter.lt('rand_split', 0.70))),
-    testSet: pos.filter(ee.Filter.gte('rand_split', 0.70))
-                .merge(neg.filter(ee.Filter.gte('rand_split', 0.70)))
-  };
-}
-
-var thresholds = [0.5, 0.7, 0.9];
-
-var clfProb = ee.Classifier.smileRandomForest({
-  numberOfTrees: ntree,
-  variablesPerSplit: mtry,
-  minLeafPopulation: leaf
-}).train({
-  features: cvTrain,
-  classProperty: selectedLabel,
-  inputProperties: inputBands
-}).setOutputMode('PROBABILITY');
-
-var valWithProb = cvVal.classify(clfProb);
-
-var valWithPred = valWithProb.map(function(feat) {
-  var p = ee.Number(feat.get('classification'));
-  return feat.set('pred_class', p.gte(t));
+// Assign fill colour based on probability quintiles
+var gridProbStyled = gridProb.map(function(f) {
+  var p = ee.Number(f.get('classification'));
+  return f.set('style', {
+    color: '00000000',
+    fillColor: ee.Algorithms.If(p.lt(0.2), '00ff0033',
+      ee.Algorithms.If(p.lt(0.4), 'ccff0033',
+        ee.Algorithms.If(p.lt(0.6), 'ffaa0033',
+          ee.Algorithms.If(p.lt(0.8), 'ff550033', 'ff000055')))),
+    width: 1
+  });
 });
+
+// Display degradation risk probability map across Mongolia
+Map.addLayer(gridProbStyled.style({styleProperty: 'style'}), {}, 'Grid probability (y15 final)');
 ```
 
 ## Interactive Visualization
@@ -574,6 +595,16 @@ The app supports NGOs and environmental monitoring organisations working on land
 
 -   **Loss of Spatial Detail at 10km Grid**: Aggregating pixel-level change data to 10km grid cells may obscure localised degradation hotspots, reducing the precision available for targeted intervention planning.
 
+<!-- -->
+
+-   **Static Driver Assumption**: The RF model uses environmental conditions from the early period only, rather than incorporating how those conditions changed between periods. This means the model captures where degradation is likely based on existing conditions, but may miss cases where a sudden shift triggered localised degradation.
+
 # References
+
+-   Hengl, T., Mendes de Jesus, J., Heuvelink, G.B., Ruiperez Gonzalez, M., Kilibarda, M., Blagotić, A., Shangguan, W., Wright, M.N., Geng, X., Bauer-Marschallinger, B. and Guevara, M.A., 2017. SoilGrids250m: Global gridded soil information based on machine learning. PLoS one, 12(2), p.e0169748.
+
+-   Meng, X., Gao, X., Li, S., Li, S. and Lei, J., 2021. Monitoring desertification in Mongolia based on Landsat images and Google Earth Engine from 1990 to 2020. Ecological indicators, 129, p.107908.
+
+<!-- -->
 
 -   Zhang, Y., Wang, J., Wang, Y., Ochir, A., & Togtokh, C. (2022). Land Cover Change Analysis to Assess Sustainability of Development in the Mongolian Plateau over 30 Years. Sustainability, 14(10), 6129. https://doi.org/10.3390/su14106129
