@@ -9,13 +9,12 @@
 // ============================================================
 // SECTION 1 - CONFIG
 // ============================================================
-// This block keeps all key settings in one place.
 
 var CONFIG = {
+  //study area and initial map view
   aoi: ee.Geometry.Rectangle([95, 45, 115, 48]),
   centerZoom: 6,
-
-  // Main grid asset with observed change, drivers, labels, and RF probability.
+  //asset paths
   gridAssetPath_withRF: 'projects/casa25-488411/assets/grid_y15_probability_f',
 
   boundaryName: 'Province boundaries',
@@ -26,21 +25,19 @@ var CONFIG = {
   recentStart: '2021-06-01',
   recentEnd: '2023-09-30',
 
-  // Field names used in the grid asset.
   fieldDegShare: 'degradation_share_allpx',
   fieldRecShare: 'recovery_share_allpx',
   fieldNetChange: 'net_change_allpx',
   fieldPriority: 'y15_netneg',
   fieldRFProb: 'classification',
-
-  // Predictor fields shown in the inspector.
+  
+  //predictor metadata for inspector display
   predictors: [
     'prec', 'vpd', 'pet', 'ws',
     'elev', 'slope', 'northness', 'eastness',
     'clay', 'sand'
   ],
 
-  // Friendly names and units for users.
   predictorMeta: {
     prec: {label: 'Precipitation', unit: 'mm/mo'},
     vpd: {label: 'Vapor pressure deficit', unit: 'kPa'},
@@ -54,7 +51,7 @@ var CONFIG = {
     sand: {label: 'Sand content', unit: '%'}
   },
 
-  // Palettes for each map layer.
+  //colour palettes
   palNetChange: ['993C1D', 'D85A30', 'F5C4B3', 'F1EFE8', 'C0DD97', '639922', '3B6D11'],
   palDegradation: ['FFFFE5', 'FEE391', 'FEC44F', 'FE9929', 'EC7014', 'CC4C02', '8C2D04'],
   palRecovery: ['F7FCF5', 'C7E9C0', '74C476', '31A354', '006D2C'],
@@ -64,44 +61,42 @@ var CONFIG = {
     'dfc35a', 'c4281b', 'a59b8f', 'b39fe1'
   ],
 
-  // Model outputs used in the methodology panel.
-  rfImportance: [
-    {name: 'prec',      value: 56.67},
-    {name: 'ws',        value: 43.80},
-    {name: 'elev',      value: 36.46},
-    {name: 'slope',     value: 33.99},
-    {name: 'pet',       value: 31.57},
-    {name: 'vpd',       value: 30.70},
-    {name: 'clay',      value: 27.03},
-    {name: 'sand',      value: 24.54},
-    {name: 'northness', value: 20.74},
-    {name: 'eastness',  value: 15.21}
-  ],
+rfImportance: [
+  {name: 'prec',      value: 56.67},
+  {name: 'ws',        value: 43.80},
+  {name: 'elev',      value: 36.46},
+  {name: 'slope',     value: 33.99},
+  {name: 'pet',       value: 31.57},
+  {name: 'vpd',       value: 30.70},
+  {name: 'clay',      value: 27.03},
+  {name: 'sand',      value: 24.54},
+  {name: 'northness', value: 20.74},
+  {name: 'eastness',  value: 15.21}
+],
 
-  rfImportanceByGroup: {
-    Climate: 162.74,
-    Terrain: 106.40,
-    Soil:    51.57
-  },
+rfImportanceByGroup: {
+  Climate: 162.74,
+  Terrain: 106.40,
+  Soil:    51.57
+},
 
-  rfMetrics: {
-    OA: 0.923,
-    Kappa: 0.638,
-    F1: 0.681,
-    Precision: 0.732,
-    Recall: 0.637
-  },
+rfMetrics: {
+  OA: 0.923,
+  Kappa: 0.638,
+  F1: 0.681,
+  Precision: 0.732,
+  Recall: 0.637
+},
 
-  rfConfusionMatrix: {
-    TP: 172, TN: 1766, FP: 63, FN: 98
-  }
+rfConfusionMatrix: {
+  TP: 172, TN: 1766, FP: 63, FN: 98
+}
 };
 
 
 // ============================================================
 // SECTION 2 - DATA LOADING
 // ============================================================
-// Load all data used by the app.
 
 var mapPanel = ui.Map();
 
@@ -111,23 +106,17 @@ var grid = gridWithRF;
 print('gridWithRF size', gridWithRF.size());
 print('gridWithRF first feature', gridWithRF.first());
 
-// Province boundaries are only used as a map reference.
+// Load province boundaries as a lightweight contextual reference layer
+// support spatial orientation but are not part of the analysis
 var provinceBoundaries = ee.FeatureCollection('FAO/GAUL/2015/level1')
   .filter(ee.Filter.eq('ADM0_NAME', 'Mongolia'));
 
-// Mongolia national boundary is used to keep guided examples inside Mongolia.
-var mongoliaBoundary = ee.FeatureCollection('FAO/GAUL/2015/level0')
-  .filter(ee.Filter.eq('ADM0_NAME', 'Mongolia'));
-
-// Fast pre-exported Dynamic World layers.
 var dwEarly = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_early');
 var dwRecent = ee.Image('projects/rs-and-bsabd/assets/mongolia_dw_recent');
-
 
 // ============================================================
 // SECTION 3 - LAYER BUILDERS
 // ============================================================
-// These functions create map layers when the user changes view.
 
 function transparentTextStyle(extra) {
   var style = {
@@ -228,12 +217,7 @@ function layerPriority() {
 }
 
 function layerRFProbability() {
-  // The RF threshold lets users filter low-probability cells.
-  var filtered = grid.filter(
-    ee.Filter.gte(CONFIG.fieldRFProb, STATE.rfThreshold)
-  );
-
-  var styled = filtered.map(function(f) {
+  var styled = grid.map(function(f) {
     var v = safeNumber(f, CONFIG.fieldRFProb, 0);
     return f.set('style', {
       color: '00000000',
@@ -262,7 +246,6 @@ function layerProvinceBoundaries() {
 }
 
 function layerExampleMarker() {
-  // This cyan box highlights the guided example cell.
   var exampleCell = ee.FeatureCollection([STATE.exampleFeature]);
 
   return ui.Map.Layer(
@@ -293,7 +276,6 @@ function paletteFill(value, vmin, vmax, palette) {
 // ============================================================
 // SECTION 4 - UI STATE
 // ============================================================
-// STATE remembers what the user is currently viewing.
 
 var STATE = {
   viewMode: 'A',
@@ -303,8 +285,7 @@ var STATE = {
   exampleFeature: null,
   exampleName: '',
   exampleKind: null,
-  highlightMetric: null,
-  rfThreshold: 0
+  highlightMetric: null
 };
 
 var CURRENT_LAYOUT = null;
@@ -313,7 +294,6 @@ var CURRENT_LAYOUT = null;
 // ============================================================
 // SECTION 5 - LAYER SWITCHING
 // ============================================================
-// This controls which layer is visible on the map.
 
 function isSwipeMode() {
   return STATE.viewMode === 'A' && STATE.activeSubLayer === 'swipe';
@@ -368,7 +348,6 @@ function setActiveLayer() {
 // ============================================================
 // SECTION 6 - LULC SWIPE MAPS
 // ============================================================
-// Swipe mode compares the two land-cover periods side by side.
 
 var leftMap = ui.Map();
 var rightMap = ui.Map();
@@ -426,7 +405,6 @@ function initSwipeLayers() {
 // ============================================================
 // SECTION 7 - GUIDED EXAMPLES
 // ============================================================
-// These buttons help us jump to useful demo cases.
 
 var exampleCalloutPanel = ui.Panel({
   style: {
@@ -567,26 +545,22 @@ function setExampleStatus(text) {
 }
 
 function getExampleFeature(kind) {
-  // Keep example cells inside Mongolia, not just inside the rectangle AOI.
-  var gridInMongolia = grid.filterBounds(mongoliaBoundary.geometry());
-
   if (kind === 'priority') {
-    return gridInMongolia
+    return grid
       .filter(ee.Filter.eq(CONFIG.fieldPriority, 1))
       .sort(CONFIG.fieldDegShare, false)
       .first();
   }
 
   if (kind === 'model') {
-    return gridInMongolia
+    return grid
       .sort(CONFIG.fieldRFProb, false)
       .first();
   }
 
   if (kind === 'recovery') {
-    return gridInMongolia
+    return grid
       .filter(ee.Filter.gt(CONFIG.fieldNetChange, 0))
-      .filter(ee.Filter.gt(CONFIG.fieldRecShare, 0))
       .sort(CONFIG.fieldRecShare, false)
       .first();
   }
@@ -599,31 +573,6 @@ function clearExample() {
   STATE.highlightMetric = null;
   setExampleStatus('');
   hideExampleCallout();
-}
-
-function resetView() {
-  // This is useful during a live demo.
-  clearExample();
-
-  STATE.viewMode = 'A';
-  STATE.activeSubLayer = 'net';
-  STATE.opacity = 1;
-  STATE.rfThreshold = 0;
-
-  subLayerSelect.setValue('net', false);
-  opacitySlider.setValue(1, false);
-  rfThresholdSlider.setValue(0, false);
-
-  inspectorPanel.clear();
-  inspectorPanel.style().set('shown', false);
-
-  updateControlPanel();
-  setAppLayout();
-  setActiveLayer();
-
-  mapPanel.centerObject(CONFIG.aoi, CONFIG.centerZoom);
-
-  setExampleStatus('Selection cleared. The map has returned to the overview.');
 }
 
 function goToExample(kind) {
@@ -701,126 +650,8 @@ function goToExample(kind) {
 
 
 // ============================================================
-// SECTION 8 - SUMMARY PANEL
+// SECTION 8 - CONTROL PANEL
 // ============================================================
-// This small map panel gives users the big picture first.
-
-var summaryValueLabels = {};
-
-var summaryPanel = ui.Panel({
-  style: {
-    position: 'top-right',
-    width: '250px',
-    padding: '10px',
-    margin: '8px 8px 0 0',
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    border: '1px solid #cccccc'
-  }
-});
-
-function makeSummaryRow(label, value, key) {
-  var valueLabel = ui.Label(value, transparentTextStyle({
-    fontSize: '12px',
-    fontWeight: 'bold',
-    color: '222',
-    textAlign: 'right',
-    margin: '0'
-  }));
-
-  if (key) {
-    summaryValueLabels[key] = valueLabel;
-  }
-
-  return ui.Panel({
-    widgets: [
-      ui.Label(label, transparentTextStyle({
-        fontSize: '11px',
-        color: '666',
-        stretch: 'horizontal',
-        margin: '0'
-      })),
-      valueLabel
-    ],
-    layout: ui.Panel.Layout.flow('horizontal'),
-    style: {
-      padding: '2px 0',
-      margin: '0'
-    }
-  });
-}
-
-function buildSummaryPanel() {
-  summaryPanel.clear();
-
-  summaryPanel.add(ui.Label('Study area overview', transparentTextStyle({
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: '111',
-    margin: '0 0 6px 0'
-  })));
-
-  summaryPanel.add(makeSummaryRow('Grid cells', 'Loading...', 'total'));
-  summaryPanel.add(makeSummaryRow('Priority cells', 'Loading...', 'priority'));
-  summaryPanel.add(makeSummaryRow('Mean degradation', 'Loading...', 'meanDeg'));
-  summaryPanel.add(makeSummaryRow('Mean recovery', 'Loading...', 'meanRec'));
-  summaryPanel.add(makeSummaryRow('Max modelled prob.', 'Loading...', 'maxProb'));
-
-  summaryPanel.add(ui.Label(
-    'Screening support, not official classification.',
-    transparentTextStyle({
-      fontSize: '10px',
-      color: '777',
-      margin: '6px 0 0 0',
-      whiteSpace: 'pre-wrap'
-    })
-  ));
-}
-
-function updateSummaryPanel() {
-  buildSummaryPanel();
-
-  var gridInMongolia = grid.filterBounds(mongoliaBoundary.geometry());
-
-  gridInMongolia.size().evaluate(function(v) {
-    summaryValueLabels.total.setValue(formatCount(v));
-  });
-
-  gridInMongolia
-    .filter(ee.Filter.eq(CONFIG.fieldPriority, 1))
-    .size()
-    .evaluate(function(v) {
-      summaryValueLabels.priority.setValue(formatCount(v));
-    });
-
-  gridInMongolia
-    .aggregate_mean(CONFIG.fieldDegShare)
-    .evaluate(function(v) {
-      summaryValueLabels.meanDeg.setValue(fmtPct(v));
-    });
-
-  gridInMongolia
-    .aggregate_mean(CONFIG.fieldRecShare)
-    .evaluate(function(v) {
-      summaryValueLabels.meanRec.setValue(fmtPct(v));
-    });
-
-  gridInMongolia
-    .aggregate_max(CONFIG.fieldRFProb)
-    .evaluate(function(v) {
-      summaryValueLabels.maxProb.setValue(fmtProb(v));
-    });
-}
-
-function formatCount(v) {
-  if (v === null || v === undefined) return '-';
-  return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-
-// ============================================================
-// SECTION 9 - CONTROL PANEL
-// ============================================================
-// This is the left panel users interact with.
 
 function makeDivider() {
   return ui.Panel({
@@ -840,20 +671,20 @@ var titleLabel = ui.Label('Mongolia Land Degradation', {
   color: '222'
 });
 
-var subtitleLabel = ui.Label('Risk Explorer', {
+var subtitleLabel = ui.Label('Risk explorer', {
   fontSize: '17px',
   color: '777',
   margin: '0 0 8px 0'
 });
 
-var viewModeLabel = ui.Label('View Mode', {
+var viewModeLabel = ui.Label('View mode', {
   fontSize: '15px',
   fontWeight: 'bold',
   color: '333',
   margin: '8px 0 2px 0'
 });
 
-var viewAButton = ui.Button('Historical Change', function() {
+var viewAButton = ui.Button('Historical change', function() {
   STATE.viewMode = 'A';
   STATE.activeSubLayer = 'net';
   clearExample();
@@ -863,7 +694,7 @@ var viewAButton = ui.Button('Historical Change', function() {
   setActiveLayer();
 });
 
-var viewBButton = ui.Button('Priority Areas', function() {
+var viewBButton = ui.Button('Priority areas', function() {
   STATE.viewMode = 'B';
   clearExample();
   updateControlPanel();
@@ -871,7 +702,7 @@ var viewBButton = ui.Button('Priority Areas', function() {
   setActiveLayer();
 });
 
-var viewDButton = ui.Button('Susceptibility Map', function() {
+var viewDButton = ui.Button('Susceptibility map', function() {
   STATE.viewMode = 'D';
   clearExample();
   updateControlPanel();
@@ -879,21 +710,14 @@ var viewDButton = ui.Button('Susceptibility Map', function() {
   setActiveLayer();
 });
 
-var resetButton = ui.Button('Reset View / Clear Selection', function() {
-  resetView();
-}, false, {
-  stretch: 'horizontal',
-  margin: '8px 0 0 0'
-});
-
 var subLayerSelect = ui.Select({
   items: [
-    {label: 'Net Change Balance', value: 'net'},
-    {label: 'Observed Degradation Share', value: 'deg'},
-    {label: 'Observed Recovery Share', value: 'rec'},
-    {label: 'Land Cover Baseline, 2016-2018', value: 'early'},
-    {label: 'Land Cover Recent, 2021-2023', value: 'recent'},
-    {label: 'Compare Land-cover Periods', value: 'swipe'}
+    {label: 'Net change balance', value: 'net'},
+    {label: 'Observed degradation share', value: 'deg'},
+    {label: 'Observed recovery share', value: 'rec'},
+    {label: 'Land cover baseline, 2016-2018', value: 'early'},
+    {label: 'Land cover recent, 2021-2023', value: 'recent'},
+    {label: 'Compare land-cover periods', value: 'swipe'}
   ],
   value: 'net',
   onChange: function(v) {
@@ -914,14 +738,14 @@ var explanationPanel = ui.Panel({
 });
 
 var explanationTitle = ui.Label('', transparentTextStyle({
-  fontSize: '13px',
+  fontSize: '12px',
   fontWeight: 'bold',
   color: '333',
   margin: '0 0 3px 0'
 }));
 
 var explanationBody = ui.Label('', transparentTextStyle({
-  fontSize: '12px',
+  fontSize: '11px',
   color: '555',
   margin: '0',
   whiteSpace: 'pre-wrap'
@@ -936,38 +760,38 @@ function updateExplanation() {
 
   if (STATE.viewMode === 'A') {
     if (STATE.activeSubLayer === 'net') {
-      title = 'Net Change Balance';
+      title = 'Net change balance';
       body =
         'Net change = recovery share - degradation share.\n' +
         'Positive values mean more recovery than degradation; negative values mean more degradation than recovery.';
     } else if (STATE.activeSubLayer === 'deg') {
-      title = 'Observed Degradation Share';
+      title = 'Observed degradation share';
       body =
         'The proportion of each 10 km grid cell where vegetation changed to bare ground between the two periods.';
     } else if (STATE.activeSubLayer === 'rec') {
-      title = 'Observed Recovery Share';
+      title = 'Observed recovery share';
       body =
         'The proportion of each 10 km grid cell where bare ground changed back to vegetation between the two periods.';
     } else if (STATE.activeSubLayer === 'early') {
-      title = 'Land Cover Baseline, 2016-2018';
+      title = 'Land cover baseline, 2016-2018';
       body =
         'This map shows the most common Dynamic World land-cover class during the 2016-2018 growing seasons.';
     } else if (STATE.activeSubLayer === 'recent') {
-      title = 'Land Cover Recent, 2021-2023';
+      title = 'Land cover recent, 2021-2023';
       body =
         'This map shows the most common Dynamic World land-cover class during the 2021-2023 growing seasons.';
     } else if (STATE.activeSubLayer === 'swipe') {
-      title = 'Compare Land-cover Periods';
+      title = 'Compare land-cover periods';
       body =
         'Drag the divider to compare the baseline land-cover map with the recent land-cover map.';
     }
   } else if (STATE.viewMode === 'B') {
-    title = 'Priority Areas';
+    title = 'Priority areas';
     body =
       'Areas where observed degradation is high and recovery does not offset it.\n' +
       'Priority areas are grid cells in the top 15% for observed degradation and with negative net change. They are suggested for monitoring, not official degradation classifications.';
   } else {
-    title = 'Susceptibility Map';
+    title = 'Susceptibility map';
     body =
       'This score comes from a Random Forest model using climate, terrain, and soil variables. It shows relative monitoring priority, not a certain future prediction.';
   }
@@ -978,7 +802,7 @@ function updateExplanation() {
 
 var layerSectionPanel = ui.Panel({
   widgets: [
-    ui.Label('Historical Evidence Layer', {
+    ui.Label('Historical evidence layer', {
       fontSize: '15px',
       fontWeight: 'bold',
       color: '333',
@@ -1004,11 +828,7 @@ var boundaryCheckbox = ui.Checkbox({
     STATE.showBoundaries = v;
     setActiveLayer();
   },
-  style: {
-    margin: '10px 0 0 0',
-    fontSize: '12px',
-    color: '555'
-  }
+  style: {margin: '8px 0 0 0'}
 });
 
 var exampleStatusLabel = ui.Label('', transparentTextStyle({
@@ -1031,13 +851,13 @@ var examplesPanel = ui.Panel({
       color: '888',
       margin: '0 0 6px 0'
     }),
-    ui.Button('Observed Priority Area', function() {
+    ui.Button('Observed priority area', function() {
       goToExample('priority');
     }, false, {stretch: 'horizontal', margin: '2px 0'}),
-    ui.Button('High Modelled Probability', function() {
+    ui.Button('High modelled probability', function() {
       goToExample('model');
     }, false, {stretch: 'horizontal', margin: '2px 0'}),
-    ui.Button('Mixed / Recovering Cell', function() {
+    ui.Button('Mixed / recovering cell', function() {
       goToExample('recovery');
     }, false, {stretch: 'horizontal', margin: '2px 0'}),
     exampleStatusLabel
@@ -1065,35 +885,6 @@ var opacitySlider = ui.Slider({
   style: {stretch: 'horizontal'}
 });
 
-var rfThresholdSlider = ui.Slider({
-  min: 0,
-  max: 1,
-  value: 0,
-  step: 0.05,
-  onChange: function(v) {
-    STATE.rfThreshold = v;
-    if (STATE.viewMode === 'D') {
-      setActiveLayer();
-    }
-  },
-  style: {stretch: 'horizontal'}
-});
-
-var rfThresholdPanel = ui.Panel({
-  widgets: [
-    ui.Label('Filter: show cells with probability ≥', {
-      fontSize: '11px',
-      color: '666',
-      margin: '4px 0 2px 0'
-    }),
-    rfThresholdSlider
-  ],
-  style: {
-    stretch: 'horizontal',
-    margin: '0 0 0 0'
-  }
-});
-
 var legendPanel = ui.Panel({
   style: {
     stretch: 'horizontal',
@@ -1101,7 +892,7 @@ var legendPanel = ui.Panel({
   }
 });
 
-var aboutButton = ui.Button('View Methodology', function() {
+var aboutButton = ui.Button('About · methods · limitations', function() {
   showAboutModal();
 }, false, {
   stretch: 'horizontal',
@@ -1116,11 +907,10 @@ var controlPanel = ui.Panel({
     viewAButton,
     viewBButton,
     viewDButton,
-    resetButton,
 
     makeDivider(),
-    layerSectionPanel,
     explanationPanel,
+    layerSectionPanel,
     boundaryCheckbox,
 
     makeDivider(),
@@ -1153,7 +943,6 @@ var controlPanel = ui.Panel({
       margin: '0 0 6px 0'
     }),
     legendPanel,
-    rfThresholdPanel,
 
     ui.Label(
       'Tip: click any grid cell on the map to inspect its values.',
@@ -1175,9 +964,8 @@ var controlPanel = ui.Panel({
 
 
 // ============================================================
-// SECTION 10 - LEGEND RENDERER
+// SECTION 9 - LEGEND RENDERER
 // ============================================================
-// The legend changes with the current active layer.
 
 function updateLegend() {
   legendPanel.clear();
@@ -1361,7 +1149,7 @@ function renderCategoricalLulcLegend() {
 
 
 // ============================================================
-// SECTION 11 - UI REFRESH
+// SECTION 10 - UI REFRESH
 // ============================================================
 
 function updateControlPanel() {
@@ -1383,17 +1171,13 @@ function updateControlPanel() {
 
   layerSectionPanel.style().set('shown', STATE.viewMode === 'A');
 
-  // The probability filter only makes sense for the susceptibility map.
-  rfThresholdPanel.style().set('shown', STATE.viewMode === 'D');
-
   updateExplanation();
 }
 
 
 // ============================================================
-// SECTION 12 - INSPECTOR
+// SECTION 11 - INSPECTOR
 // ============================================================
-// The inspector appears when users click a grid cell.
 
 var inspectorPanel = ui.Panel({
   style: {
@@ -1461,9 +1245,6 @@ function renderInspector(props, coords) {
 
   inspectorPanel.add(headerRow);
 
-  // A short plain-language interpretation helps non-technical users.
-  inspectorPanel.add(makeInterpretationBox(props));
-
   inspectorPanel.add(makeSectionLabel('OBSERVED (2016-18 to 2021-23)'));
   inspectorPanel.add(makeKV(
     'Observed degradation share',
@@ -1508,61 +1289,6 @@ function renderInspector(props, coords) {
   });
 
   inspectorPanel.style().set('shown', true);
-}
-
-function makeInterpretationBox(props) {
-  return ui.Panel({
-    widgets: [
-      ui.Label('Interpretation', transparentTextStyle({
-        fontSize: '10px',
-        fontWeight: 'bold',
-        color: '666',
-        margin: '0 0 2px 0'
-      })),
-      ui.Label(makeInterpretationText(props), transparentTextStyle({
-        fontSize: '11px',
-        color: '333',
-        margin: '0',
-        whiteSpace: 'pre-wrap'
-      }))
-    ],
-    style: {
-      padding: '6px 7px',
-      margin: '6px 0 4px 0',
-      backgroundColor: 'F7F7F7',
-      border: '1px solid E0E0E0'
-    }
-  });
-}
-
-function makeInterpretationText(props) {
-  var net = props[CONFIG.fieldNetChange];
-  var prob = props[CONFIG.fieldRFProb];
-  var priority = props[CONFIG.fieldPriority] === 1;
-
-  var text;
-
-  if (priority) {
-    text =
-      'This cell is flagged as a priority area: observed degradation is high and recovery does not offset it.';
-  } else if (net !== null && net !== undefined && net < -0.02) {
-    text =
-      'This cell shows net degradation, but it is not in the current top-priority class.';
-  } else if (net !== null && net !== undefined && net > 0.02) {
-    text =
-      'Observed recovery is higher than degradation here, so this cell is not treated as a priority degradation cell.';
-  } else {
-    text =
-      'Observed degradation and recovery are relatively balanced here.';
-  }
-
-  if (prob !== null && prob !== undefined && prob >= 0.8) {
-    text += ' The modelled probability is high, so this cell may still be worth closer monitoring.';
-  } else if (prob !== null && prob !== undefined && prob <= 0.2) {
-    text += ' The modelled probability is low compared with other cells in the study area.';
-  }
-
-  return text;
 }
 
 function makeSectionLabel(text) {
@@ -1617,173 +1343,115 @@ function fmtProb(v) {
 
 
 // ============================================================
-// SECTION 13 - ABOUT MODAL
+// SECTION 12 - ABOUT MODAL
 // ============================================================
-// This explains the method in a presentation-friendly way.
 
 function showAboutModal() {
   var modal = ui.Panel({
     style: {
       position: 'top-center',
-      width: '620px',
-      padding: '28px',
+      width: '560px',
+      padding: '20px',
       backgroundColor: 'white'
     }
   });
 
-  modal.add(ui.Panel({
-    widgets: [
-      ui.Label('Methodology overview', {
-        fontSize: '20px',
-        fontWeight: 'bold',
-        color: '222',
-        margin: '0',
-        textAlign: 'center',
-        stretch: 'horizontal'
-      })
-    ],
-    style: {
-      stretch: 'horizontal',
-      padding: '10px 0',
-      margin: '0 0 10px 0'
-    }
+  modal.add(ui.Label('About this tool', {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    margin: '0 0 8px 0'
   }));
 
   modal.add(ui.Label(
-    'This app studies desertification-related land degradation in selected ' +
-    'Mongolian transition zones using 10 km grid-based change analysis and a ' +
-    'Random Forest model. It combines observed land-cover change with ' +
-    'environmental drivers to show where degradation is more concentrated and ' +
-    'which areas may need more attention.',
-    {
-      fontSize: '12px',
-      color: '444',
-      margin: '0 0 14px 0',
-      whiteSpace: 'pre-wrap'
-    }
+    'A screening and monitoring-support tool for identifying priority cells ' +
+    'for land-degradation attention across the 45-48 N Mongolian transect. ' +
+    'Intended for NGOs, environmental monitoring stakeholders, and ' +
+    'restoration-oriented organisations. Not a substitute for field survey ' +
+    'or official degradation assessment.',
+    {fontSize: '12px', margin: '0 0 8px 0'}
   ));
 
-  modal.add(makeModalDivider());
+  modal.add(ui.Label('Methods', {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    margin: '12px 0 4px 0'
+  }));
 
-  modal.add(makeStageHeader('Stage 1: Grid-based degradation indicators and hotspots'));
-  modal.add(makeStageCard([
-    ['Purpose:',
-     'To identify where degradation signals are already strong and provide ' +
-     'the basic spatial evidence.'],
-    ['Method:',
-     'We summarise land-cover change into 10 km grid cells, then calculate ' +
-     'degradation, recovery, and net change for each grid. We also use ' +
-     'exploratory hotspot analysis to find cells with strong degradation ' +
-     'signals and cells with overall net negative change.'],
-  ]));
+  modal.add(ui.Label(
+    'Land cover from Google Dynamic World V1 (2016-18 vs 2021-23 seasonal modes). ' +
+    'Degradation pixels = vegetation to bare transitions (grass/trees/shrub to bare). ' +
+    'Recovery pixels = the reverse. Pixel counts are aggregated to a 10 km grid as ' +
+    'degradation share, recovery share, and net change balance. ' +
+    'Priority cells are defined as the top 15% of cells by degradation share, ' +
+    'conditional on net change being negative (y15_netneg label). ' +
+    'A Random Forest classifier (100 trees, mtry=6) was trained on this label ' +
+    'using 10 predictors covering climate (precipitation, VPD, PET, wind speed, ' +
+    '2016-18 means from TerraClimate), terrain (elevation, slope, northness, ' +
+    'eastness from SRTM), and soil (clay, sand fractions from OpenLandMap).',
+    {fontSize: '11px', margin: '0 0 8px 0'}
+  ));
 
-  modal.add(makeStageHeader('Stage 2: Labels and environmental drivers'));
-  modal.add(makeStageCard([
-    ['Purpose:',
-     'To turn the observed degradation pattern into modelling labels and ' +
-     'connect it with environmental conditions.'],
-    ['Method:',
-     'Positive cells are defined as grid cells with both high degradation ' +
-     'and negative net change. We then extract environmental drivers for ' +
-     'each grid cell, including climate variables (precipitation, vapour ' +
-     'pressure deficit, potential evapotranspiration, and wind speed), ' +
-     'terrain variables (elevation, slope, northness, and eastness), and ' +
-     'soil variables (clay and sand content).'],
-    ['Output:',
-     'A grid-level dataset that includes binary degradation labels and ' +
-     'environmental driver variables.']
-  ]));
+  modal.add(ui.Label('Model performance (held-out test set)', {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    margin: '12px 0 4px 0'
+  }));
 
-  modal.add(makeStageHeader('Stage 3: Random Forest probability model'));
-  modal.add(makeStageCard([
-    ['Purpose:',
-     'To predict which grid cells are more likely to belong to the ' +
-     'high-degradation and net-negative class.'],
-    ['Method:',
-     'We first compare different label definitions, then tune the Random ' +
-     'Forest model with cross-validation on the training set, and finally ' +
-     'test the selected model on an independent test set. The final model ' +
-     'is applied to all grid cells to produce a degradation probability map.'],
-    ['Output:',
-     'A grid-level degradation probability map, model performance results, ' +
-     'and variable importance results. The variable importance results show which groups of environmental factors contributed most to the model’s prediction. When the factors were grouped by category, climate variables had the highest combined importance, followed by terrain and soil variables. This does not mean that every climate variable was more important than every terrain or soil variable; rather, the climate group as a whole contributed the most to the model. Within each group, the ranked factors were precipitation, wind speed, potential evapotranspiration, and vapour pressure deficit for climate; elevation, slope, northness, and eastness for terrain; and clay content and sand content for soil.']
-  ]));
+modal.add(ui.Label(
+  'Overall accuracy: ' + (CONFIG.rfMetrics.OA * 100).toFixed(1) + '%  |  ' +
+  'Kappa: ' + CONFIG.rfMetrics.Kappa.toFixed(2) + '  |  ' +
+  'F1: ' + CONFIG.rfMetrics.F1.toFixed(2) + '  |  ' +
+  'Precision: ' + CONFIG.rfMetrics.Precision.toFixed(2) + '  |  ' +
+  'Recall: ' + CONFIG.rfMetrics.Recall.toFixed(2),
+  {fontSize: '11px', margin: '0 0 4px 0'}
+));
+
+modal.add(ui.Label(
+  'Confusion matrix on the held-out test set: ' +
+  CONFIG.rfConfusionMatrix.TP + ' true positives, ' +
+  CONFIG.rfConfusionMatrix.TN + ' true negatives, ' +
+  CONFIG.rfConfusionMatrix.FP + ' false positives, ' +
+  CONFIG.rfConfusionMatrix.FN + ' false negatives.',
+  {fontSize: '11px', color: '666', margin: '0 0 4px 0'}
+));
+
+modal.add(ui.Label(
+  'The high overall accuracy partly reflects class imbalance (most cells are ' +
+  'non-priority). Kappa of 0.64 indicates substantial agreement beyond chance. ' +
+  'Recall of 0.64 means roughly one in three true priority cells is missed by ' +
+  'the model, so users should cross-reference modelled probability with the ' +
+  'observed degradation layer rather than rely on the model alone.',
+  {fontSize: '11px', color: '666', margin: '0 0 8px 0'}
+));
+
+  modal.add(ui.Label('Limitations', {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    margin: '12px 0 4px 0'
+  }));
+
+  modal.add(ui.Label(
+    'Livestock pressure, a well-established driver of Mongolian rangeland ' +
+    'degradation, is not included due to limited data access. Dynamic World ' +
+    'thematic accuracy is lower in sparsely vegetated drylands, so individual ' +
+    'transitions carry noise that aggregation to 10 km partially mitigates. ' +
+    'Probabilities from the Random Forest model indicate relative susceptibility ' +
+    'under 2016-18 environmental conditions and are not forecasts of future change.',
+    {fontSize: '11px', margin: '0 0 8px 0'}
+  ));
 
   var closeBtn = ui.Button('Close', function() {
     ui.root.remove(modal);
-  }, false, {margin: '20px 0 0 0'});
+  }, false, {margin: '12px 0 0 0'});
 
   modal.add(closeBtn);
   ui.root.add(modal);
 }
 
-function makeModalDivider() {
-  return ui.Panel({
-    style: {
-      height: '1px',
-      backgroundColor: 'DDDDDD',
-      margin: '6px 0 12px 0',
-      stretch: 'horizontal'
-    }
-  });
-}
-
-function makeStageHeader(text) {
-  return ui.Panel({
-    widgets: [
-      ui.Label(text, {
-        fontSize: '14px',
-        fontWeight: 'bold',
-        color: '222',
-        margin: '0',
-        textAlign: 'center',
-        stretch: 'horizontal',
-        backgroundColor: 'rgba(0,0,0,0)'
-      })
-    ],
-    style: {
-      stretch: 'horizontal',
-      padding: '10px 12px',
-      margin: '14px 0 0 0',
-      backgroundColor: 'ECEEF2'
-    }
-  });
-}
-
-function makeStageCard(items) {
-  var card = ui.Panel({
-    style: {
-      stretch: 'horizontal',
-      padding: '14px 16px',
-      margin: '0',
-      backgroundColor: 'FBFBFC',
-      border: '1px solid #E0E0E4'
-    }
-  });
-
-  items.forEach(function(pair, idx) {
-    card.add(ui.Label(pair[0], {
-      fontSize: '12px',
-      fontWeight: 'bold',
-      color: '222',
-      margin: idx === 0 ? '0 0 4px 0' : '10px 0 4px 0'
-    }));
-    card.add(ui.Label(pair[1], {
-      fontSize: '12px',
-      color: '444',
-      margin: '0',
-      whiteSpace: 'pre-wrap'
-    }));
-  });
-
-  return card;
-}
-
 
 // ============================================================
-// SECTION 14 - APP BOOT
+// SECTION 13 - APP BOOT
 // ============================================================
-// Start the app.
 
 function setAppLayout() {
   var nextLayout = isSwipeMode() ? 'swipe' : 'main';
@@ -1806,7 +1474,6 @@ function setAppLayout() {
   CURRENT_LAYOUT = nextLayout;
 }
 
-mapPanel.add(summaryPanel);
 mapPanel.add(exampleCalloutPanel);
 mapPanel.add(inspectorPanel);
 
@@ -1825,4 +1492,3 @@ rightMap.centerObject(CONFIG.aoi, CONFIG.centerZoom);
 setAppLayout();
 updateControlPanel();
 setActiveLayer();
-updateSummaryPanel();
