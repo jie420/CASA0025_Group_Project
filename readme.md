@@ -1,17 +1,31 @@
-Code structure and reproducibility
+## Code structure and reproducibility
 
-This project uses both Python and Google Earth Engine because different parts of the workflow are better suited to different environments.
+This project uses both **Google Earth Engine (GEE)** and **Python**.
 
-Python was used for data cleaning, label checking, exploratory analysis, and preparing intermediate CSV/GeoJSON outputs. This made it easier to inspect the 10 km grid data, test degradation definitions, and prepare inputs for the Random Forest workflow.
+**Google Earth Engine** is the main platform for:
+- land-cover change detection,
+- grid-based spatial analysis,
+- map layers,
+- and the final interactive application.
 
-Google Earth Engine was used for the main geospatial processing, map layers, interactive visualisation, and final application interface. The main app code is therefore stored in the GEE script, while the Python files document the supporting data-processing steps.
+**Python** is used only for supporting tasks, including:
+- checking exported grid tables,
+- exploratory analysis,
+- label inspection,
+- and preparing intermediate CSV/GeoJSON files.
 
-The workflow should be read in the following order:
+The **main visualisation and final user-facing application are implemented in Google Earth Engine**.
 
-data_preprocessing/ — creates or prepares the 10 km grid and land-cover change variables
-python_analysis/ — checks degradation labels, cleans exported tables, and prepares model-ready data
-gee_random_forest/ — trains and evaluates the Random Forest model
-gee_app/ — contains the final interactive GEE app and visualisation code
+---
+
+## GEE asset dependency
+
+Several GEE scripts rely on the cleaned 10 km grid asset imported in the GEE editor as `table`:
+
+```js
+var table = ee.FeatureCollection(
+  "projects/project-d66d6e26-4a7f-4da9-a72/assets/mongolia_grid_10km_cleaned_for_gee_v2"
+);
 
 The main visualisation and user-facing application are implemented in Google Earth Engine.
 
